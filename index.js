@@ -21,7 +21,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 
 // URL Constants
-const BASE_URL = 'https://9076-122-172-87-197.ngrok-free.app/';
+const BASE_URL = 'https://d937-122-172-87-197.ngrok-free.app';
 const SUCCESS_URL = `${BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&sender_id=`;
 const CANCEL_URL = `${BASE_URL}/cancel`;
 const TICKET_URL = `${BASE_URL}/tickets/`;
@@ -84,14 +84,17 @@ app.post('/webhook', (req, res) => {
           userStates[senderId] = { step: 0, data: {} };
         }
 
+        const timestamp = new Date();
+
         if (messageBody === 'hi') {
-          // Save the phone number to the database
-          connection.query('INSERT INTO phone_numbers (phone_number) VALUES (?) ON DUPLICATE KEY UPDATE phone_number = ?', [senderId, senderId], (err, result) => {
-            if (err) {
-              console.error('Error saving phone number to database:', err);
-            } else {
-              console.log('Phone number saved to database');
-            }
+          // Save the phone number to the database with conversation type and timestamp
+          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
+            [senderId, 'greeting', timestamp, senderId, 'greeting', timestamp], (err, result) => {
+              if (err) {
+                console.error('Error saving phone number to database:', err);
+              } else {
+                console.log('Phone number saved to database');
+              }
           });
 
           sendWhatsAppMessage({
@@ -104,6 +107,15 @@ app.post('/webhook', (req, res) => {
             }
           });
         } else if (messageBody === 'room details') {
+          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
+            [senderId, 'room details', timestamp, senderId, 'room details', timestamp], (err, result) => {
+              if (err) {
+                console.error('Error saving conversation to database:', err);
+              } else {
+                console.log('Conversation saved to database');
+              }
+          });
+
           sendWhatsAppMessage({
             messaging_product: "whatsapp",
             to: senderId,
@@ -114,6 +126,15 @@ app.post('/webhook', (req, res) => {
             }
           });
         } else if (messageBody === 'amenities') {
+          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
+            [senderId, 'amenities', timestamp, senderId, 'amenities', timestamp], (err, result) => {
+              if (err) {
+                console.error('Error saving conversation to database:', err);
+              } else {
+                console.log('Conversation saved to database');
+              }
+          });
+
           sendWhatsAppMessage({
             messaging_product: "whatsapp",
             to: senderId,
@@ -123,7 +144,16 @@ app.post('/webhook', (req, res) => {
               language: { code: "en_US" }
             }
           });
-        }else if (messageBody === 'location and directions') {
+        } else if (messageBody === 'location and directions') {
+          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
+            [senderId, 'location and directions', timestamp, senderId, 'location and directions', timestamp], (err, result) => {
+              if (err) {
+                console.error('Error saving conversation to database:', err);
+              } else {
+                console.log('Conversation saved to database');
+              }
+          });
+
           sendWhatsAppMessage({
             messaging_product: "whatsapp",
             to: senderId,
@@ -132,7 +162,16 @@ app.post('/webhook', (req, res) => {
               body: "Hello! 😊 We're excited to welcome you to Lyxn Labs PG. Here’s how to find us:\n\n*Address:*\nno 2, 15th main,\nVasanth Nagar,\nopposite to the shell petrol pump,\nBanglore 560001.\n\n*Directions:*\nFor your convenience, use this - https://maps.app.goo.gl/cX5LytoeHbkpDaUM6 - to get exact directions.\n\nIf you need any help finding us, just reply to this message or give us a call. We look forward to your stay!\n\nBest,\nLyxn Labs Team"
             }
           });
-        }else if (messageBody === 'check availability') {
+        } else if (messageBody === 'check availability') {
+          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
+            [senderId, 'check availability', timestamp, senderId, 'check availability', timestamp], (err, result) => {
+              if (err) {
+                console.error('Error saving conversation to database:', err);
+              } else {
+                console.log('Conversation saved to database');
+              }
+          });
+
           sendWhatsAppMessage({
             messaging_product: "whatsapp",
             to: senderId,
@@ -142,10 +181,19 @@ app.post('/webhook', (req, res) => {
               language: { code: "en_US" }
             }
           });
-        }else if (messageBody === 'advance booking') {
+        } else if (messageBody === 'advance booking') {
+          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
+            [senderId, 'advance booking', timestamp, senderId, 'advance booking', timestamp], (err, result) => {
+              if (err) {
+                console.error('Error saving conversation to database:', err);
+              } else {
+                console.log('Conversation saved to database');
+              }
+          });
+
           // Create a Stripe checkout session
           stripe.checkout.sessions.create({
-            payment_method_types: ['card',],
+            payment_method_types: ['card'],
             line_items: [{
               price_data: {
                 currency: 'inr',
@@ -198,6 +246,7 @@ app.post('/webhook', (req, res) => {
     res.sendStatus(500); // Internal Server Error
   }
 });
+
 
 async function handlePaymentSuccess(sessionId, senderId) {
   try {
