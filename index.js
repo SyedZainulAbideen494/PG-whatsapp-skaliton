@@ -21,7 +21,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 
 // URL Constants
-const BASE_URL = 'https://4f2e-122-172-87-197.ngrok-free.app';
+const BASE_URL = 'https://9076-122-172-87-197.ngrok-free.app/';
 const SUCCESS_URL = `${BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&sender_id=`;
 const CANCEL_URL = `${BASE_URL}/cancel`;
 const TICKET_URL = `${BASE_URL}/tickets/`;
@@ -85,6 +85,15 @@ app.post('/webhook', (req, res) => {
         }
 
         if (messageBody === 'hi') {
+          // Save the phone number to the database
+          connection.query('INSERT INTO phone_numbers (phone_number) VALUES (?) ON DUPLICATE KEY UPDATE phone_number = ?', [senderId, senderId], (err, result) => {
+            if (err) {
+              console.error('Error saving phone number to database:', err);
+            } else {
+              console.log('Phone number saved to database');
+            }
+          });
+
           sendWhatsAppMessage({
             messaging_product: "whatsapp",
             to: senderId,
@@ -449,19 +458,41 @@ app.post("/login", (req, res) => {
 app.post('/add/members', (req, res) => {
   const { name, phoneNumber, roomType } = req.body;
 
-  const query = 'INSERT INTO members (name, phoneno, room_type) VALUES (?, ?, ?)';
-  connection.query(query, [name, phoneNumber, roomType], (err, result) => {
+  const maxCapacity = {
+      '2 sharing': 10, // 5 rooms, 2 people per room
+      '3 sharing': 15, // 5 rooms, 3 people per room
+      '4 sharing': 20  // 5 rooms, 4 people per room
+  };
+
+  const checkOccupancyQuery = 'SELECT COUNT(*) AS count FROM members WHERE room_type = ? AND active = 1';
+
+  connection.query(checkOccupancyQuery, [roomType], (err, results) => {
       if (err) {
-          console.error('Error inserting member:', err);
-          res.status(500).send('Error inserting member');
+          console.error('Error checking occupancy:', err);
+          res.status(500).send('Error checking occupancy');
           return;
       }
-      res.status(200).send('Member added successfully');
+
+      const currentOccupancy = results[0].count;
+      if (currentOccupancy >= maxCapacity[roomType]) {
+          res.status(400).send('This room type is full');
+          return;
+      }
+
+      const addMemberQuery = 'INSERT INTO members (name, phoneno, room_type, active) VALUES (?, ?, ?, 1)';
+      connection.query(addMemberQuery, [name, phoneNumber, roomType], (err, result) => {
+          if (err) {
+              console.error('Error inserting member:', err);
+              res.status(500).send('Error inserting member');
+              return;
+          }
+          res.status(200).send('Member added successfully');
+      });
   });
 });
 
 app.get('/display/members', (req, res) => {
-  const query = 'SELECT * FROM members';
+  const query = 'SELECT * FROM members where active = 1';
 
   connection.query(query, (err, results) => {
       if (err) {
@@ -490,7 +521,81 @@ app.put('/api/updateMember/:id', (req, res) => {
   });
 });
 
+app.get('/api/vacancies', (req, res) => {
+  const maxCapacity = {
+      '2 sharing': 10,
+      '3 sharing': 15,
+      '4 sharing': 20
+  };
 
+  const query = 'SELECT room_type, COUNT(*) AS count FROM members WHERE active = 1 GROUP BY room_type';
+
+  connection.query(query, (err, results) => {
+      if (err) {
+          console.error('Error fetching occupancy:', err);
+          res.status(500).send('Error fetching occupancy');
+          return;
+      }
+
+      const vacancies = {
+          '2 sharing': maxCapacity['2 sharing'],
+          '3 sharing': maxCapacity['3 sharing'],
+          '4 sharing': maxCapacity['4 sharing']
+      };
+
+      results.forEach(row => {
+          vacancies[row.room_type] -= row.count;
+      });
+
+      res.json(vacancies);
+  });
+});
+
+app.get('/api/revenue', (req, res) => {
+  const rentPrices = {
+    '2 sharing': 7500,
+    '3 sharing': 6000,
+    '4 sharing': 5000,
+  };
+
+  const query = 'SELECT room_type, COUNT(*) AS count FROM members WHERE active = 1 GROUP BY room_type';
+
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching occupancy:', err);
+      res.status(500).send('Error fetching occupancy');
+      return;
+    }
+
+    const revenue = {
+      '2 sharing': 0,
+      '3 sharing': 0,
+      '4 sharing': 0,
+      total: 0,
+    };
+
+    results.forEach(row => {
+      revenue[row.room_type] = row.count * rentPrices[row.room_type];
+      revenue.total += revenue[row.room_type];
+    });
+
+    res.json(revenue);
+  });
+});
+
+app.get('/api/phone-numbers', (req, res) => {
+  const query = 'SELECT * FROM phone_numbers';
+
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error('Error fetching phone numbers:', err);
+      res.status(500).send('Error fetching phone numbers');
+      return;
+    }
+
+    res.json(results);
+  });
+});
 
 // Start the server
 app.listen(PORT, () => {
