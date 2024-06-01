@@ -21,7 +21,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 
 // URL Constants
-const BASE_URL = 'https://8d71-122-172-87-197.ngrok-free.app';
+const BASE_URL = 'https://a048-122-172-87-197.ngrok-free.app';
 const SUCCESS_URL = `${BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&sender_id=`;
 const CANCEL_URL = `${BASE_URL}/cancel`;
 const TICKET_URL = `${BASE_URL}/tickets/`;
@@ -505,54 +505,193 @@ app.post("/login", (req, res) => {
 });
 
 app.post('/add/members', (req, res) => {
-  const { name, phoneNumber, roomType } = req.body;
+  const { name, phoneNumber, bed, building, floor, flat, room } = req.body;
 
-  const maxCapacity = {
-      '2 sharing': 10, // 5 rooms, 2 people per room
-      '3 sharing': 15, // 5 rooms, 3 people per room
-      '4 sharing': 20  // 5 rooms, 4 people per room
-  };
-
-  const checkOccupancyQuery = 'SELECT COUNT(*) AS count FROM members WHERE room_type = ? AND active = 1';
-
-  connection.query(checkOccupancyQuery, [roomType], (err, results) => {
+  // Get the bed_id
+  const getBedIdQuery = `
+      SELECT beds.id AS bed_id
+      FROM buildings
+      INNER JOIN floors ON buildings.id = floors.building_id
+      INNER JOIN flats ON floors.id = flats.floor_id
+      INNER JOIN rooms ON flats.id = rooms.flat_id
+      INNER JOIN beds ON rooms.id = beds.room_id
+      WHERE buildings.name = ? AND floors.floor_number = ? AND flats.flat_number = ? AND rooms.room_number = ? AND beds.bed_number = ?
+  `;
+  connection.query(getBedIdQuery, [building, floor, flat, room, bed], (err, results) => {
       if (err) {
-          console.error('Error checking occupancy:', err);
-          res.status(500).send('Error checking occupancy');
+          console.error('Error getting bed_id:', err);
+          res.status(500).send('Error getting bed_id');
+          return;
+      }
+      
+      if (results.length === 0) {
+          console.error('bed_id not found for the specified building, floor, flat, room, and bed');
+          res.status(404).send('bed_id not found for the specified building, floor, flat, room, and bed');
           return;
       }
 
-      const currentOccupancy = results[0].count;
-      if (currentOccupancy >= maxCapacity[roomType]) {
-          res.status(400).send('This room type is full');
-          return;
-      }
+      const { bed_id } = results[0];
 
-      const addMemberQuery = 'INSERT INTO members (name, phoneno, room_type, active) VALUES (?, ?, ?, 1)';
-      connection.query(addMemberQuery, [name, phoneNumber, roomType], (err, result) => {
+      // Check if the bed is already taken
+      const checkBedAvailabilityQuery = `
+          SELECT COUNT(*) AS count 
+          FROM members 
+          WHERE bed_id = ? AND active = 1
+      `;
+      connection.query(checkBedAvailabilityQuery, [bed_id], (err, results) => {
           if (err) {
-              console.error('Error inserting member:', err);
-              res.status(500).send('Error inserting member');
+              console.error('Error checking bed availability:', err);
+              res.status(500).send('Error checking bed availability');
               return;
           }
-          res.status(200).send('Member added successfully');
+
+          if (results[0].count > 0) {
+              console.error('Bed is already taken');
+              res.status(400).send('Bed is already taken');
+              return;
+          }
+
+          // Insert the new member using the retrieved bed_id
+          const addMemberQuery = `
+              INSERT INTO members (name, phoneno, bed_id, active)
+              VALUES (?, ?, ?, 1)
+          `;
+          connection.query(addMemberQuery, [name, phoneNumber, bed_id], (err, result) => {
+              if (err) {
+                  console.error('Error inserting member:', err);
+                  res.status(500).send('Error inserting member');
+                  return;
+              }
+              res.status(200).send('Member added successfully');
+          });
       });
   });
 });
-
 app.get('/display/members', (req, res) => {
-  const query = 'SELECT * FROM members where active = 1';
+  const membersQuery = 'SELECT * FROM members WHERE active = 1';
 
-  connection.query(query, (err, results) => {
+  connection.query(membersQuery, (err, membersResults) => {
       if (err) {
           console.error('Error fetching members:', err);
           res.status(500).send('Server error');
           return;
       }
-      res.json(results);
+
+      if (membersResults.length === 0) {
+          res.json([]);
+          return;
+      }
+
+      const membersWithDetails = [];
+      let processedMembers = 0;
+
+      membersResults.forEach((member) => {
+          const bedQuery = 'SELECT * FROM beds WHERE id = ?';
+          connection.query(bedQuery, [member.bed_id], (err, bedResults) => {
+              if (err) {
+                  console.error('Error fetching bed:', err);
+                  res.status(500).send('Server error');
+                  return;
+              }
+
+              if (bedResults.length === 0) {
+                  console.error(`Bed not found for bed_id: ${member.bed_id}`);
+                  processedMembers++;
+                  checkAllMembersProcessed();
+                  return;
+              }
+
+              const bed = bedResults[0];
+              const roomQuery = 'SELECT * FROM rooms WHERE id = ?';
+              connection.query(roomQuery, [bed.room_id], (err, roomResults) => {
+                  if (err) {
+                      console.error('Error fetching room:', err);
+                      res.status(500).send('Server error');
+                      return;
+                  }
+
+                  if (roomResults.length === 0) {
+                      console.error(`Room not found for room_id: ${bed.room_id}`);
+                      processedMembers++;
+                      checkAllMembersProcessed();
+                      return;
+                  }
+
+                  const room = roomResults[0];
+                  const flatQuery = 'SELECT * FROM flats WHERE id = ?';
+                  connection.query(flatQuery, [room.flat_id], (err, flatResults) => {
+                      if (err) {
+                          console.error('Error fetching flat:', err);
+                          res.status(500).send('Server error');
+                          return;
+                      }
+
+                      if (flatResults.length === 0) {
+                          console.error(`Flat not found for flat_id: ${room.flat_id}`);
+                          processedMembers++;
+                          checkAllMembersProcessed();
+                          return;
+                      }
+
+                      const flat = flatResults[0];
+                      const floorQuery = 'SELECT * FROM floors WHERE id = ?';
+                      connection.query(floorQuery, [flat.floor_id], (err, floorResults) => {
+                          if (err) {
+                              console.error('Error fetching floor:', err);
+                              res.status(500).send('Server error');
+                              return;
+                          }
+
+                          if (floorResults.length === 0) {
+                              console.error(`Floor not found for floor_id: ${flat.floor_id}`);
+                              processedMembers++;
+                              checkAllMembersProcessed();
+                              return;
+                          }
+
+                          const floor = floorResults[0];
+                          const buildingQuery = 'SELECT * FROM buildings WHERE id = ?';
+                          connection.query(buildingQuery, [floor.building_id], (err, buildingResults) => {
+                              if (err) {
+                                  console.error('Error fetching building:', err);
+                                  res.status(500).send('Server error');
+                                  return;
+                              }
+
+                              if (buildingResults.length === 0) {
+                                  console.error(`Building not found for building_id: ${floor.building_id}`);
+                                  processedMembers++;
+                                  checkAllMembersProcessed();
+                                  return;
+                              }
+
+                              const building = buildingResults[0];
+                              const memberDetails = {
+                                  ...member,
+                                  bed,
+                                  room,
+                                  flat,
+                                  floor,
+                                  building
+                              };
+
+                              membersWithDetails.push(memberDetails);
+                              processedMembers++;
+                              checkAllMembersProcessed();
+                          });
+                      });
+                  });
+              });
+          });
+      });
+
+      function checkAllMembersProcessed() {
+          if (processedMembers === membersResults.length) {
+              res.json(membersWithDetails);
+          }
+      }
   });
 });
-
 app.put('/api/updateMember/:id', (req, res) => {
   const memberId = req.params.id;
   
@@ -646,7 +785,59 @@ app.get('/api/phone-numbers', (req, res) => {
   });
 });
 
+app.put('/update/member/:id', (req, res) => {
+  const memberId = req.params.id;
+  const { name, phoneNumber, buildingId, floorId, flatId, roomId, bedId } = req.body;
 
+  // Implement logic to update details in the respective tables
+  const updateMemberQuery = `
+      UPDATE members
+      SET name = ?, phoneNumber = ?
+      WHERE id = ?
+  `;
+  const updateBuildingQuery = `
+      UPDATE buildings
+      SET name = ?
+      WHERE id = ?
+  `;
+  const updateFloorQuery = `
+      UPDATE floors
+      SET floor_number = ?
+      WHERE id = ?
+  `;
+  const updateFlatQuery = `
+      UPDATE flats
+      SET flat_number = ?, sharing = ?
+      WHERE id = ?
+  `;
+  const updateRoomQuery = `
+      UPDATE rooms
+      SET room_number = ?
+      WHERE id = ?
+  `;
+  const updateBedQuery = `
+      UPDATE beds
+      SET bed_number = ?
+      WHERE id = ?
+  `;
+
+  // Execute the update queries in parallel using Promise.all or async/await
+  Promise.all([
+      connection.query(updateMemberQuery, [name, phoneNumber, memberId]),
+      connection.query(updateBuildingQuery, [req.body.buildingName, buildingId]),
+      connection.query(updateFloorQuery, [req.body.floorNumber, floorId]),
+      connection.query(updateFlatQuery, [req.body.flatNumber, req.body.sharing, flatId]),
+      connection.query(updateRoomQuery, [req.body.roomNumber, roomId]),
+      connection.query(updateBedQuery, [req.body.bedNumber, bedId])
+  ]).then(() => {
+      // All update queries executed successfully
+      res.status(200).send('Member details updated successfully');
+  }).catch(error => {
+      // Error occurred during updates
+      console.error('Error updating details in tables:', error);
+      res.status(500).send('Error updating member details');
+  });
+});
 
 
 // Start the server
