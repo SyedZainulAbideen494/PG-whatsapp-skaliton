@@ -21,7 +21,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 
 // URL Constants
-const BASE_URL = 'https://d937-122-172-87-197.ngrok-free.app';
+const BASE_URL = 'https://8d71-122-172-87-197.ngrok-free.app';
 const SUCCESS_URL = `${BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&sender_id=`;
 const CANCEL_URL = `${BASE_URL}/cancel`;
 const TICKET_URL = `${BASE_URL}/tickets/`;
@@ -324,7 +324,7 @@ async function generateTicketPDF(ticketDetails) {
 function sendWhatsAppMessage(data) {
   const config = {
     headers: {
-      'Authorization': 'Bearer EAAFsUoRPg1QBO197JBrZB7lmmFHAH6wHds1qOhDd8asVgk2MKnegr6WgipctTFtWrabHManZBcxi7y0vNZCqxzuy3GoL31lcWZB0LcQN7cGlXDrZBksvO3ZBYi8jQcwmHWPyS36OElP2GyLPoU83ljXnNsP6yFPawRy3n09tgOYQ6s1IjOQXKGk7iKffLfdXfN',
+      'Authorization': 'Bearer EAAFsUoRPg1QBOzpnPGEpxBDKEw93j35D2V0Qg5C8O58FNQZAxWXWMo0XJZB6ezMoUWY6xNC6AhPGUZCjt0w8AJwuyAfkhjnZAn73tOU88pXhTxAJevtKm1GSGkDFwh5y79N1eX9LWhD3ceZAZBr36MDd1fgAy0mP9UfVDIugUDGxcl64vAhpNuj7FkbG36HGJn3RQus1iw92DiNn4w',
       'Content-Type': 'application/json'
     }
   };
@@ -340,7 +340,7 @@ function sendWhatsAppMessage(data) {
 
 // Webhook verification endpoint (GET request)
 app.get('/webhook', (req, res) => {
-  const VERIFY_TOKEN = "EAAFsUoRPg1QBO197JBrZB7lmmFHAH6wHds1qOhDd8asVgk2MKnegr6WgipctTFtWrabHManZBcxi7y0vNZCqxzuy3GoL31lcWZB0LcQN7cGlXDrZBksvO3ZBYi8jQcwmHWPyS36OElP2GyLPoU83ljXnNsP6yFPawRy3n09tgOYQ6s1IjOQXKGk7iKffLfdXfN"; // Replace with your verification token
+  const VERIFY_TOKEN = "EAAFsUoRPg1QBOzpnPGEpxBDKEw93j35D2V0Qg5C8O58FNQZAxWXWMo0XJZB6ezMoUWY6xNC6AhPGUZCjt0w8AJwuyAfkhjnZAn73tOU88pXhTxAJevtKm1GSGkDFwh5y79N1eX9LWhD3ceZAZBr36MDd1fgAy0mP9UfVDIugUDGxcl64vAhpNuj7FkbG36HGJn3RQus1iw92DiNn4w"; // Replace with your verification token
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
@@ -645,6 +645,9 @@ app.get('/api/phone-numbers', (req, res) => {
     res.json(results);
   });
 });
+
+
+
 
 // Start the server
 app.listen(PORT, () => {
