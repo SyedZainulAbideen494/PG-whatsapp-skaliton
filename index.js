@@ -21,7 +21,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 
 // URL Constants
-const BASE_URL = 'https://6f35-122-172-85-200.ngrok-free.app';
+const BASE_URL = 'https://srv491382.hstgr.cloud/pg';
 const SUCCESS_URL = `${BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&sender_id=`;
 const CANCEL_URL = `${BASE_URL}/cancel`;
 const TICKET_URL = `${BASE_URL}/tickets/`;
@@ -48,7 +48,7 @@ app.use(cors({
 }));
 
 // Serve static files from the 'public' directory
-app.use(express.static(path.join(__dirname, 'public')));
+app.use("/pg", express.static(path.join(__dirname, 'public')));
 
 const connection = mysql.createPool({
   connectionLimit: 10, // Maximum number of connections in the pool
@@ -68,7 +68,7 @@ connection.getConnection((err) => {
 
 const userStates = {};
 
-app.post('/webhook', (req, res) => {
+app.post('/pg/webhook', (req, res) => {
   console.log('Incoming POST request:', JSON.stringify(req.body, null, 2)); // Log incoming POST request payload
 
   try {
@@ -796,7 +796,7 @@ function sendWhatsAppMessage(data) {
 }
 
 // Webhook verification endpoint (GET request)
-app.get('/webhook', (req, res) => {
+app.get('/pg/webhook', (req, res) => {
   const VERIFY_TOKEN = "EAAFsUoRPg1QBOzpnPGEpxBDKEw93j35D2V0Qg5C8O58FNQZAxWXWMo0XJZB6ezMoUWY6xNC6AhPGUZCjt0w8AJwuyAfkhjnZAn73tOU88pXhTxAJevtKm1GSGkDFwh5y79N1eX9LWhD3ceZAZBr36MDd1fgAy0mP9UfVDIugUDGxcl64vAhpNuj7FkbG36HGJn3RQus1iw92DiNn4w"; // Replace with your verification token
   const mode = req.query['hub.mode'];
   const token = req.query['hub.verify_token'];
@@ -812,12 +812,12 @@ app.get('/webhook', (req, res) => {
 });
 
 // GET endpoint for testing
-app.get('/', (req, res) => {
+app.get('/pg', (req, res) => {
   res.send('Welcome to the Facebook Messenger webhook!');
 });
 
 // Success endpoint to handle successful payments
-app.get('/success', async (req, res) => {
+app.get('/pg/success', async (req, res) => {
   const sessionId = req.query.session_id;
   const senderId = req.query.sender_id;
   if (!sessionId || !senderId) {
