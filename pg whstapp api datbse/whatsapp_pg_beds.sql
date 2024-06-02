@@ -1,0 +1,55 @@
+-- MySQL dump 10.13  Distrib 8.0.33, for Win64 (x86_64)
+--
+-- Host: localhost    Database: whatsapp_pg
+-- ------------------------------------------------------
+-- Server version	8.0.34
+
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+
+--
+-- Table structure for table `beds`
+--
+
+DROP TABLE IF EXISTS `beds`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `beds` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `room_id` int DEFAULT NULL,
+  `bed_number` int NOT NULL,
+  `available` int DEFAULT '0',
+  PRIMARY KEY (`id`),
+  KEY `room_id` (`room_id`),
+  CONSTRAINT `beds_ibfk_1` FOREIGN KEY (`room_id`) REFERENCES `rooms` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=217 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
+-- Dumping data for table `beds`
+--
+
+LOCK TABLES `beds` WRITE;
+/*!40000 ALTER TABLE `beds` DISABLE KEYS */;
+INSERT INTO `beds` VALUES (1,1,1,1),(2,2,1,1),(3,3,1,1),(4,4,1,1),(5,5,1,1),(6,6,1,1),(7,7,1,1),(8,8,1,1),(9,9,1,1),(10,10,1,1),(11,11,1,1),(12,12,1,1),(13,13,1,1),(14,14,1,1),(15,15,1,1),(16,16,1,1),(17,17,1,1),(18,18,1,1),(19,19,1,1),(20,20,1,1),(21,21,1,1),(22,22,1,1),(23,23,1,1),(24,24,1,1),(25,25,1,1),(26,26,1,1),(27,26,2,1),(28,27,1,1),(29,27,2,1),(30,28,1,1),(31,28,2,1),(32,29,1,1),(33,29,2,1),(34,30,1,1),(35,30,2,1),(36,31,1,1),(37,31,2,1),(38,32,1,0),(39,32,2,1),(40,33,1,1),(41,33,2,1),(42,34,1,0),(43,34,2,1),(44,35,1,1),(45,35,2,1),(46,36,1,0),(47,36,2,1),(48,37,1,1),(49,37,2,1),(50,38,1,1),(51,38,2,0),(52,38,3,0),(53,39,1,0),(54,39,2,0),(55,39,3,0),(56,40,1,0),(57,40,2,0),(58,40,3,1),(59,41,1,1),(60,41,2,1),(61,41,3,1),(62,42,1,1),(63,42,2,1),(64,42,3,1),(65,43,1,1),(66,43,2,1),(67,43,3,1),(68,44,1,1),(69,44,2,1),(70,44,3,1),(71,45,1,1),(72,45,2,1),(73,45,3,0),(74,46,1,0),(75,46,2,0),(76,46,3,0),(77,46,4,0),(78,47,1,0),(79,47,2,0),(80,47,3,0),(81,47,4,0),(82,48,1,0),(83,48,2,0),(84,48,3,0),(85,48,4,0),(86,49,1,1),(87,49,2,1),(88,49,3,0),(89,49,4,0),(90,50,1,0),(91,50,2,0),(92,50,3,0),(93,50,4,0);
+/*!40000 ALTER TABLE `beds` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
+
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
+
+-- Dump completed on 2024-06-02 18:19:08
