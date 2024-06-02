@@ -21,7 +21,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 
 // URL Constants
-const BASE_URL = 'https://a048-122-172-87-197.ngrok-free.app';
+const BASE_URL = 'https://6f35-122-172-85-200.ngrok-free.app';
 const SUCCESS_URL = `${BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&sender_id=`;
 const CANCEL_URL = `${BASE_URL}/cancel`;
 const TICKET_URL = `${BASE_URL}/tickets/`;
@@ -88,7 +88,7 @@ app.post('/webhook', (req, res) => {
 
         if (messageBody === 'hi') {
           // Save the phone number to the database with conversation type and timestamp
-          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
+          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?)', 
             [senderId, 'greeting', timestamp, senderId, 'greeting', timestamp], (err, result) => {
               if (err) {
                 console.error('Error saving phone number to database:', err);
@@ -107,7 +107,7 @@ app.post('/webhook', (req, res) => {
             }
           });
         } else if (messageBody === 'room details') {
-          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
+          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?)', 
             [senderId, 'room details', timestamp, senderId, 'room details', timestamp], (err, result) => {
               if (err) {
                 console.error('Error saving conversation to database:', err);
@@ -126,7 +126,7 @@ app.post('/webhook', (req, res) => {
             }
           });
         } else if (messageBody === 'amenities') {
-          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
+          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?)', 
             [senderId, 'amenities', timestamp, senderId, 'amenities', timestamp], (err, result) => {
               if (err) {
                 console.error('Error saving conversation to database:', err);
@@ -145,7 +145,7 @@ app.post('/webhook', (req, res) => {
             }
           });
         } else if (messageBody === 'location and directions') {
-          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
+          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?)', 
             [senderId, 'location and directions', timestamp, senderId, 'location and directions', timestamp], (err, result) => {
               if (err) {
                 console.error('Error saving conversation to database:', err);
@@ -162,27 +162,484 @@ app.post('/webhook', (req, res) => {
               body: "Hello! 😊 We're excited to welcome you to Lyxn Labs PG. Here’s how to find us:\n\n*Address:*\nno 2, 15th main,\nVasanth Nagar,\nopposite to the shell petrol pump,\nBanglore 560001.\n\n*Directions:*\nFor your convenience, use this - https://maps.app.goo.gl/cX5LytoeHbkpDaUM6 - to get exact directions.\n\nIf you need any help finding us, just reply to this message or give us a call. We look forward to your stay!\n\nBest,\nLyxn Labs Team"
             }
           });
-        } else if (messageBody === 'check availability') {
-          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
-            [senderId, 'check availability', timestamp, senderId, 'check availability', timestamp], (err, result) => {
-              if (err) {
-                console.error('Error saving conversation to database:', err);
-              } else {
-                console.log('Conversation saved to database');
+        }else if (messageBody === '1 sharing') {
+          const buildings = ["Building 1", "Building 2", "Building 3"]; // Add your building names here
+          let currentBuildingIndex = 0;
+          let message = "";
+      
+          const fetchRoomDetails = async () => {
+              const buildingName = buildings[currentBuildingIndex];
+      
+              try {
+                  // Fetch available beds in 1-sharing rooms for the specified building
+                  const bedResults = await new Promise((resolve, reject) => {
+                      connection.query(
+                          `SELECT beds.bed_number, rooms.room_number, flats.flat_number, floors.floor_number 
+                           FROM beds 
+                           JOIN rooms ON beds.room_id = rooms.id 
+                           JOIN flats ON rooms.flat_id = flats.id 
+                           JOIN floors ON flats.floor_id = floors.id 
+                           JOIN buildings ON floors.building_id = buildings.id 
+                           WHERE beds.available = 0 AND rooms.sharing = 1 AND buildings.name = ?`,
+                          [buildingName],
+                          (err, results) => {
+                              if (err) {
+                                  reject(err);
+                              } else {
+                                  resolve(results);
+                              }
+                          }
+                      );
+                  });
+      
+                  if (bedResults.length > 0) {
+                      // Add building heading to the message
+                      message += `\n🏢 Building: ${buildingName} 🏢\n`;
+      
+                      // Group beds by floor, flat, and room
+                      const groupedBeds = {};
+                      bedResults.forEach((bed) => {
+                          const key = `${bed.floor_number}-${bed.flat_number}-${bed.room_number}`;
+                          if (!groupedBeds[key]) {
+                              groupedBeds[key] = [];
+                          }
+                          groupedBeds[key].push(bed.bed_number);
+                      });
+      
+                      // Generate message with formatted room details
+                      Object.entries(groupedBeds).forEach(([room, beds]) => {
+                          const [floor, flat, roomNumber] = room.split('-');
+                          message += `🔹 Floor ${floor}, Flat ${flat}, Room ${roomNumber}:\n`;
+                          beds.forEach((bed, index) => {
+                              message += `  • Bed ${bed}\n`;
+                          });
+                          message += "\n";
+                      });
+      
+                      // Send the constructed message for the building
+                      sendWhatsAppMessage({
+                          messaging_product: "whatsapp",
+                          to: senderId,
+                          type: "text",
+                          text: {
+                              body: message
+                          }
+                      });
+                  } else {
+                      // If no available rooms are found in the building, inform the user
+                      message += `\n🏢 Building: ${buildingName} 🏢\n`;
+                      message += `Sorry, there are no available 1-sharing rooms in ${buildingName} at the moment.\n\n`;
+                  }
+      
+                  // Move to the next building
+                  currentBuildingIndex++;
+      
+                  // If there are more buildings, fetch room details for the next building
+                  if (currentBuildingIndex < buildings.length) {
+                      await fetchRoomDetails();
+                  } else {
+                      // Send the constructed message
+                      sendWhatsAppMessage({
+                          messaging_product: "whatsapp",
+                          to: senderId,
+                          type: "text",
+                          text: {
+                              body: message
+                          }
+                      });
+                  }
+              } catch (error) {
+                  console.error('Error fetching room details:', error);
+                  sendWhatsAppMessage({
+                      messaging_product: "whatsapp",
+                      to: senderId,
+                      type: "text",
+                      text: {
+                          body: "There was an error fetching the room details. Please try again later."
+                      }
+                  });
               }
+          };
+      
+          // Save conversation to database and start fetching room details for the first building
+          connection.query(
+              'INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?)',
+              [senderId, '1 sharing', timestamp],
+              (err, result) => {
+                  if (err) {
+                      console.error('Error saving conversation to database:', err);
+                  } else {
+                      console.log('Conversation saved to database');
+                      // Start fetching room details for the first building
+                      fetchRoomDetails();
+                  }
+              }
+          );
+      }else if (messageBody === '2 sharing') {
+        const buildings = ["Building 1", "Building 2", "Building 3"]; // Add your building names here
+        let currentBuildingIndex = 0;
+        let message = "";
+    
+        const fetchRoomDetails = async () => {
+            const buildingName = buildings[currentBuildingIndex];
+    
+            try {
+                // Fetch available beds in 2-sharing rooms for the specified building
+                const bedResults = await new Promise((resolve, reject) => {
+                    connection.query(
+                        `SELECT beds.bed_number, rooms.room_number, flats.flat_number, floors.floor_number 
+                         FROM beds 
+                         JOIN rooms ON beds.room_id = rooms.id 
+                         JOIN flats ON rooms.flat_id = flats.id 
+                         JOIN floors ON flats.floor_id = floors.id 
+                         JOIN buildings ON floors.building_id = buildings.id 
+                         WHERE beds.available = 0 AND rooms.sharing = 2 AND buildings.name = ?`,
+                        [buildingName],
+                        (err, results) => {
+                            if (err) {
+                                reject(err);
+                            } else {
+                                resolve(results);
+                            }
+                        }
+                    );
+                });
+    
+                if (bedResults.length > 0) {
+                    // Add building heading to the message
+                    message += `\n🏢 Building: ${buildingName} 🏢\n`;
+    
+                    // Group beds by floor, flat, and room
+                    const groupedBeds = {};
+                    bedResults.forEach((bed) => {
+                        const key = `${bed.floor_number}-${bed.flat_number}-${bed.room_number}`;
+                        if (!groupedBeds[key]) {
+                            groupedBeds[key] = [];
+                        }
+                        groupedBeds[key].push(bed.bed_number);
+                    });
+    
+                    // Generate message with formatted room details
+                    Object.entries(groupedBeds).forEach(([room, beds]) => {
+                        const [floor, flat, roomNumber] = room.split('-');
+                        message += `🔹 Floor ${floor}, Flat ${flat}, Room ${roomNumber}:\n`;
+                        beds.forEach((bed, index) => {
+                            message += `  • Bed ${bed}\n`;
+                        });
+                        message += "\n";
+                    });
+                } else {
+                    // If no available rooms are found in the building, inform the user
+                    message += `\n🏢 Building: ${buildingName} 🏢\n`;
+                    message += `Sorry, there are no available 2-sharing rooms in ${buildingName} at the moment.\n\n`;
+                }
+    
+                // Move to the next building
+                currentBuildingIndex++;
+    
+                // If there are more buildings, fetch room details for the next building
+                if (currentBuildingIndex < buildings.length) {
+                    await fetchRoomDetails();
+                } else {
+                    // Send the constructed message
+                    sendWhatsAppMessage({
+                        messaging_product: "whatsapp",
+                        to: senderId,
+                        type: "text",
+                        text: {
+                            body: message
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error fetching room details:', error);
+                sendWhatsAppMessage({
+                    messaging_product: "whatsapp",
+                    to: senderId,
+                    type: "text",
+                    text: {
+                        body: "There was an error fetching the room details. Please try again later."
+                    }
+                });
+            }
+        };
+    
+        // Save conversation to database and start fetching room details for the first building
+        connection.query(
+            'INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?)',
+            [senderId, '2 sharing', timestamp],
+            (err, result) => {
+                if (err) {
+                    console.error('Error saving conversation to database:', err);
+                } else {
+                    console.log('Conversation saved to database');
+                    // Start fetching room details for the first building
+                    fetchRoomDetails();
+                }
+            }
+        );
+    }else if (messageBody === '3 sharing') {
+      const buildings = ["Building 1", "Building 2", "Building 3"]; // Add your building names here
+      let currentBuildingIndex = 0;
+      let message = "";
+  
+      const fetchRoomDetails = async () => {
+          const buildingName = buildings[currentBuildingIndex];
+  
+          try {
+              // Fetch available beds in 3-sharing rooms for the specified building
+              const bedResults = await new Promise((resolve, reject) => {
+                  connection.query(
+                      `SELECT beds.bed_number, rooms.room_number, flats.flat_number, floors.floor_number 
+                      FROM beds 
+                      JOIN rooms ON beds.room_id = rooms.id 
+                      JOIN flats ON rooms.flat_id = flats.id 
+                      JOIN floors ON flats.floor_id = floors.id 
+                      JOIN buildings ON floors.building_id = buildings.id 
+                      WHERE beds.available = 0 AND rooms.sharing = 3 AND buildings.name = ?`,
+                      [buildingName],
+                      (err, results) => {
+                          if (err) {
+                              reject(err);
+                          } else {
+                              resolve(results);
+                          }
+                      }
+                  );
+              });
+  
+              if (bedResults.length > 0) {
+                  // Add building heading to the message
+                  message += `\n🏢 Building: ${buildingName} 🏢\n`;
+  
+                  // Group beds by floor, flat, and room
+                  const groupedBeds = {};
+                  bedResults.forEach((bed) => {
+                      const key = `${bed.floor_number}-${bed.flat_number}-${bed.room_number}`;
+                      if (!groupedBeds[key]) {
+                          groupedBeds[key] = [];
+                      }
+                      groupedBeds[key].push(bed.bed_number);
+                  });
+  
+                  // Generate message with formatted room details
+                  Object.entries(groupedBeds).forEach(([room, beds]) => {
+                      const [floor, flat, roomNumber] = room.split('-');
+                      message += `🔹 Floor ${floor}, Flat ${flat}, Room ${roomNumber}:\n`;
+                      beds.forEach((bed, index) => {
+                          message += `  • Bed ${bed}\n`;
+                      });
+                      message += "\n";
+                  });
+              } else {
+                  // If no available rooms are found in the building, inform the user
+                  message += `\n🏢 Building: ${buildingName} 🏢\n`;
+                  message += `Sorry, there are no available 3-sharing rooms in ${buildingName} at the moment.\n\n`;
+              }
+  
+              // Move to the next building
+              currentBuildingIndex++;
+  
+              // If there are more buildings, fetch room details for the next building
+              if (currentBuildingIndex < buildings.length) {
+                  await fetchRoomDetails();
+              } else {
+                  // Send the constructed message
+                  sendWhatsAppMessage({
+                      messaging_product: "whatsapp",
+                      to: senderId,
+                      type: "text",
+                      text: {
+                          body: message
+                      }
+                  });
+              }
+          } catch (error) {
+              console.error('Error fetching room details:', error);
+              sendWhatsAppMessage({
+                  messaging_product: "whatsapp",
+                  to: senderId,
+                  type: "text",
+                  text: {
+                      body: "There was an error fetching the room details. Please try again later."
+                  }
+              });
+          }
+      };
+  
+      // Save conversation to database and start fetching room details for the first building
+      connection.query(
+          'INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?)',
+          [senderId, '3 sharing', timestamp],
+          (err, result) => {
+              if (err) {
+                  console.error('Error saving conversation to database:', err);
+              } else {
+                  console.log('Conversation saved to database');
+                  // Start fetching room details for the first building
+                  fetchRoomDetails();
+              }
+          }
+      );
+  }else if (messageBody === '4 sharing') {
+  const buildings = ["Building 1", "Building 2", "Building 3"]; // Add your building names here
+  let currentBuildingIndex = 0;
+  let message = "";
+
+  const fetchRoomDetails = async () => {
+      const buildingName = buildings[currentBuildingIndex];
+
+      try {
+          // Fetch available beds in 4-sharing rooms for the specified building
+          const bedResults = await new Promise((resolve, reject) => {
+              connection.query(
+                  `SELECT beds.bed_number, rooms.room_number, flats.flat_number, floors.floor_number 
+                  FROM beds 
+                  JOIN rooms ON beds.room_id = rooms.id 
+                  JOIN flats ON rooms.flat_id = flats.id 
+                  JOIN floors ON flats.floor_id = floors.id 
+                  JOIN buildings ON floors.building_id = buildings.id 
+                  WHERE beds.available = 0 AND rooms.sharing = 4 AND buildings.name = ?`,
+                  [buildingName],
+                  (err, results) => {
+                      if (err) {
+                          reject(err);
+                      } else {
+                          resolve(results);
+                      }
+                  }
+              );
           });
 
+          if (bedResults.length > 0) {
+              // Add building heading to the message
+              message += `\n🏢 Building: ${buildingName} 🏢\n`;
+
+              // Group beds by floor, flat, and room
+              const groupedBeds = {};
+              bedResults.forEach((bed) => {
+                  const key = `${bed.floor_number}-${bed.flat_number}-${bed.room_number}`;
+                  if (!groupedBeds[key]) {
+                      groupedBeds[key] = [];
+                  }
+                  groupedBeds[key].push(bed.bed_number);
+              });
+
+              // Generate message with formatted room details
+              Object.entries(groupedBeds).forEach(([room, beds]) => {
+                  const [floor, flat, roomNumber] = room.split('-');
+                  message += `🔹 Floor ${floor}, Flat ${flat}, Room ${roomNumber}:\n`;
+                  beds.forEach((bed, index) => {
+                      message += `  • Bed ${bed}\n`;
+                  });
+                  message += "\n";
+              });
+          } else {
+              // If no available rooms are found in the building, inform the user
+              message += `\n🏢 Building: ${buildingName} 🏢\n`;
+              message += `Sorry, there are no available 4-sharing rooms in ${buildingName} at the moment.\n\n`;
+          }
+
+          // Move to the next building
+          currentBuildingIndex++;
+
+          // If there are more buildings, fetch room details for the next building
+          if (currentBuildingIndex < buildings.length) {
+              await fetchRoomDetails();
+          } else {
+              // Send the constructed message
+              sendWhatsAppMessage({
+                  messaging_product: "whatsapp",
+                  to: senderId,
+                  type: "text",
+                  text: {
+                      body: message
+                  }
+              });
+          }
+      } catch (error) {
+          console.error('Error fetching room details:', error);
           sendWhatsAppMessage({
-            messaging_product: "whatsapp",
-            to: senderId,
-            type: "template",
-            template: {
-              name: "temp_5_pg", // Corrected template name
-              language: { code: "en_US" }
-            }
+              messaging_product: "whatsapp",
+              to: senderId,
+              type: "text",
+              text: {
+                  body: "There was an error fetching the room details. Please try again later."
+              }
           });
-        } else if (messageBody === 'advance booking') {
-          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?) ON DUPLICATE KEY UPDATE phone_number = ?, conversation_type = ?, created_at = ?', 
+      }
+  };
+
+  // Save conversation to database and start fetching room details for the first building
+  connection.query(
+      'INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?)',
+      [senderId, '4 sharing', timestamp],
+      (err, result) => {
+          if (err) {
+              console.error('Error saving conversation to database:', err);
+          } else {
+              console.log('Conversation saved to database');
+              // Start fetching room details for the first building
+              fetchRoomDetails();
+          }
+      }
+  );
+}else if (messageBody === 'check availability') {
+          const checkAvailability = async () => {
+              try {
+                  // Fetch available beds
+                  const bedResults = await new Promise((resolve, reject) => {
+                      connection.query('SELECT * FROM beds WHERE available = 0', (err, results) => {
+                          if (err) {
+                              reject(err);
+                          } else {
+                              resolve(results);
+                          }
+                      });
+                  });
+      
+                  // Initialize counters for each sharing value
+                  let sharingCounts = { 1: 0, 2: 0, 3: 0, 4: 0 };
+      
+                  // Iterate through available beds
+                  for (const bed of bedResults) {
+                      // Fetch room sharing value for the bed
+                      const roomResults = await new Promise((resolve, reject) => {
+                          connection.query('SELECT sharing FROM rooms WHERE id = ?', [bed.room_id], (err, results) => {
+                              if (err) {
+                                  reject(err);
+                              } else {
+                                  resolve(results);
+                              }
+                          });
+                      });
+      
+                      // Increment the corresponding sharing count
+                      if (roomResults.length > 0) {
+                          const sharing = roomResults[0].sharing;
+                          sharingCounts[sharing]++;
+                      }
+                  }
+      
+                  // Send a template message with the availability counts
+                  const availabilityMessage = `*Hey there!* Here's the current availability of beds for you:\n\n *1 Sharing Rooms:* ${sharingCounts[1]} beds available\n *2 Sharing Rooms:* ${sharingCounts[2]} beds available\n *3 Sharing Rooms:* ${sharingCounts[3]} beds available\n *4 Sharing Rooms:* ${sharingCounts[4]} beds available`;
+sendWhatsAppMessage({
+    messaging_product: "whatsapp",
+    to: senderId,
+    type: "template",
+    template: {
+        name: "temp_6_pg", // Template name
+        language: { code: "en_US" }
+    }
+});
+              } catch (error) {
+                  console.error('Error fetching availability:', error);
+              }
+          };
+      
+          checkAvailability();
+      } else if (messageBody === 'advance booking') {
+          connection.query('INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?)', 
             [senderId, 'advance booking', timestamp, senderId, 'advance booking', timestamp], (err, result) => {
               if (err) {
                 console.error('Error saving conversation to database:', err);
@@ -551,22 +1008,84 @@ app.post('/add/members', (req, res) => {
               return;
           }
 
-          // Insert the new member using the retrieved bed_id
-          const addMemberQuery = `
-              INSERT INTO members (name, phoneno, bed_id, active)
-              VALUES (?, ?, ?, 1)
+          // Update the availability of the bed
+          const updateBedAvailabilityQuery = `
+              UPDATE beds
+              SET available = 1
+              WHERE id = ?
           `;
-          connection.query(addMemberQuery, [name, phoneNumber, bed_id], (err, result) => {
+          connection.query(updateBedAvailabilityQuery, [bed_id], (err, result) => {
               if (err) {
-                  console.error('Error inserting member:', err);
-                  res.status(500).send('Error inserting member');
+                  console.error('Error updating bed availability:', err);
+                  res.status(500).send('Error updating bed availability');
                   return;
               }
-              res.status(200).send('Member added successfully');
+
+              // Insert the new member using the retrieved bed_id
+              const addMemberQuery = `
+                  INSERT INTO members (name, phoneno, bed_id, active)
+                  VALUES (?, ?, ?, 1)
+              `;
+              connection.query(addMemberQuery, [name, phoneNumber, bed_id], (err, result) => {
+                  if (err) {
+                      console.error('Error inserting member:', err);
+                      res.status(500).send('Error inserting member');
+                      return;
+                  }
+                  res.status(200).send('Member added successfully');
+              });
           });
       });
   });
 });
+
+app.put('/api/update/members/:id', (req, res) => {
+  const memberId = req.params.id;
+  const { name, phoneNumber, bed, building, floor, flat, room } = req.body;
+
+  // Get the bed_id
+  const getBedIdQuery = `
+      SELECT beds.id AS bed_id
+      FROM buildings
+      INNER JOIN floors ON buildings.id = floors.building_id
+      INNER JOIN flats ON floors.id = flats.floor_id
+      INNER JOIN rooms ON flats.id = rooms.flat_id
+      INNER JOIN beds ON rooms.id = beds.room_id
+      WHERE buildings.name = ? AND floors.floor_number = ? AND flats.flat_number = ? AND rooms.room_number = ? AND beds.bed_number = ?
+  `;
+  connection.query(getBedIdQuery, [building, floor, flat, room, bed], (err, results) => {
+      if (err) {
+          console.error('Error getting bed_id:', err);
+          res.status(500).send('Error getting bed_id');
+          return;
+      }
+      
+      if (results.length === 0) {
+          console.error('bed_id not found for the specified building, floor, flat, room, and bed');
+          res.status(404).send('bed_id not found for the specified building, floor, flat, room, and bed');
+          return;
+      }
+
+      const { bed_id } = results[0];
+
+      // Update member details in the database based on memberId
+      const updateMemberQuery = `
+          UPDATE members
+          SET name = ?, phoneNumber = ?, bed_id = ?
+          WHERE id = ?
+      `;
+      connection.query(updateMemberQuery, [name, phoneNumber, bed_id, memberId], (err, result) => {
+          if (err) {
+              console.error('Error updating member:', err);
+              res.status(500).send('Error updating member');
+              return;
+          }
+          res.status(200).send('Member updated successfully');
+      });
+  });
+});
+
+
 app.get('/display/members', (req, res) => {
   const membersQuery = 'SELECT * FROM members WHERE active = 1';
 
@@ -710,66 +1229,46 @@ app.put('/api/updateMember/:id', (req, res) => {
 });
 
 app.get('/api/vacancies', (req, res) => {
-  const maxCapacity = {
-      '2 sharing': 10,
-      '3 sharing': 15,
-      '4 sharing': 20
-  };
+  const vacancies = { '1 sharing': 0, '2 sharing': 0, '3 sharing': 0, '4 sharing': 0 };
 
-  const query = 'SELECT room_type, COUNT(*) AS count FROM members WHERE active = 1 GROUP BY room_type';
-
-  connection.query(query, (err, results) => {
-      if (err) {
-          console.error('Error fetching occupancy:', err);
-          res.status(500).send('Error fetching occupancy');
-          return;
-      }
-
-      const vacancies = {
-          '2 sharing': maxCapacity['2 sharing'],
-          '3 sharing': maxCapacity['3 sharing'],
-          '4 sharing': maxCapacity['4 sharing']
-      };
-
-      results.forEach(row => {
-          vacancies[row.room_type] -= row.count;
-      });
-
-      res.json(vacancies);
-  });
-});
-
-app.get('/api/revenue', (req, res) => {
-  const rentPrices = {
-    '2 sharing': 7500,
-    '3 sharing': 6000,
-    '4 sharing': 5000,
-  };
-
-  const query = 'SELECT room_type, COUNT(*) AS count FROM members WHERE active = 1 GROUP BY room_type';
-
-  connection.query(query, (err, results) => {
+  // Query to count vacancies for each sharing type
+  const vacancyQuery = `
+    SELECT sharing, COUNT(*) AS count
+    FROM beds b
+    JOIN rooms r ON b.room_id = r.id
+    WHERE b.available = 0
+    GROUP BY sharing
+  `;
+  
+  connection.query(vacancyQuery, (err, results) => {
     if (err) {
-      console.error('Error fetching occupancy:', err);
-      res.status(500).send('Error fetching occupancy');
+      console.error('Error fetching vacancies:', err);
+      res.status(500).json({ error: 'Internal server error' });
       return;
     }
 
-    const revenue = {
-      '2 sharing': 0,
-      '3 sharing': 0,
-      '4 sharing': 0,
-      total: 0,
-    };
-
+    // Update the vacancies object with counts for each sharing type
     results.forEach(row => {
-      revenue[row.room_type] = row.count * rentPrices[row.room_type];
-      revenue.total += revenue[row.room_type];
+      vacancies[`${row.sharing} sharing`] = row.count;
     });
 
-    res.json(revenue);
+    res.json(vacancies);
   });
 });
+
+app.get('/advance_tickets', (req, res) => {
+  const query = 'SELECT * FROM advance_ticket';
+
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error('Error querying database: ', err);
+      res.status(500).json({ error: 'Error querying database' });
+      return;
+    }
+    res.json(results);
+  });
+});
+
 
 app.get('/api/phone-numbers', (req, res) => {
   const query = 'SELECT * FROM phone_numbers';
@@ -784,61 +1283,6 @@ app.get('/api/phone-numbers', (req, res) => {
     res.json(results);
   });
 });
-
-app.put('/update/member/:id', (req, res) => {
-  const memberId = req.params.id;
-  const { name, phoneNumber, buildingId, floorId, flatId, roomId, bedId } = req.body;
-
-  // Implement logic to update details in the respective tables
-  const updateMemberQuery = `
-      UPDATE members
-      SET name = ?, phoneNumber = ?
-      WHERE id = ?
-  `;
-  const updateBuildingQuery = `
-      UPDATE buildings
-      SET name = ?
-      WHERE id = ?
-  `;
-  const updateFloorQuery = `
-      UPDATE floors
-      SET floor_number = ?
-      WHERE id = ?
-  `;
-  const updateFlatQuery = `
-      UPDATE flats
-      SET flat_number = ?, sharing = ?
-      WHERE id = ?
-  `;
-  const updateRoomQuery = `
-      UPDATE rooms
-      SET room_number = ?
-      WHERE id = ?
-  `;
-  const updateBedQuery = `
-      UPDATE beds
-      SET bed_number = ?
-      WHERE id = ?
-  `;
-
-  // Execute the update queries in parallel using Promise.all or async/await
-  Promise.all([
-      connection.query(updateMemberQuery, [name, phoneNumber, memberId]),
-      connection.query(updateBuildingQuery, [req.body.buildingName, buildingId]),
-      connection.query(updateFloorQuery, [req.body.floorNumber, floorId]),
-      connection.query(updateFlatQuery, [req.body.flatNumber, req.body.sharing, flatId]),
-      connection.query(updateRoomQuery, [req.body.roomNumber, roomId]),
-      connection.query(updateBedQuery, [req.body.bedNumber, bedId])
-  ]).then(() => {
-      // All update queries executed successfully
-      res.status(200).send('Member details updated successfully');
-  }).catch(error => {
-      // Error occurred during updates
-      console.error('Error updating details in tables:', error);
-      res.status(500).send('Error updating member details');
-  });
-});
-
 
 // Start the server
 app.listen(PORT, () => {
