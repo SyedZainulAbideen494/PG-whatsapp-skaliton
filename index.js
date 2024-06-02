@@ -1039,9 +1039,15 @@ app.post('/add/members', (req, res) => {
   });
 });
 
-app.put('/api/update/members/:id', (req, res) => {
-  const memberId = req.params.id;
-  const { name, phoneNumber, bed, building, floor, flat, room } = req.body;
+app.put('/edit/member/:memberId', (req, res) => {
+  const memberId = req.params.memberId;
+  const { name, phoneno, bed, building, floor, flat, room } = req.body;
+
+  // Check if phoneNumber is provided
+  if (!phoneno) {
+    res.status(400).send('Phone number is required');
+    return;
+  }
 
   // Get the bed_id
   const getBedIdQuery = `
@@ -1068,24 +1074,27 @@ app.put('/api/update/members/:id', (req, res) => {
 
       const { bed_id } = results[0];
 
-      // Update member details in the database based on memberId
+      // Update member details
       const updateMemberQuery = `
           UPDATE members
-          SET name = ?, phoneNumber = ?, bed_id = ?
-          WHERE id = ?
+          SET name = ?, phoneno = ?, bed_id = ?
+          WHERE member_id = ?
       `;
-      connection.query(updateMemberQuery, [name, phoneNumber, bed_id, memberId], (err, result) => {
+      connection.query(updateMemberQuery, [name, phoneno, bed_id, memberId], (err, result) => {
           if (err) {
-              console.error('Error updating member:', err);
-              res.status(500).send('Error updating member');
+              console.error('Error updating member details:', err);
+              res.status(500).send('Error updating member details');
               return;
           }
-          res.status(200).send('Member updated successfully');
+          if (result.affectedRows === 0) {
+              console.error('No member found with the specified member_id:', memberId);
+              res.status(404).send('No member found with the specified member_id');
+              return;
+          }
+          res.status(200).send('Member details updated successfully');
       });
   });
 });
-
-
 app.get('/display/members', (req, res) => {
   const membersQuery = 'SELECT * FROM members WHERE active = 1';
 
@@ -1213,21 +1222,48 @@ app.get('/display/members', (req, res) => {
 });
 app.put('/api/updateMember/:id', (req, res) => {
   const memberId = req.params.id;
-  
-  const sql = 'UPDATE members SET active = ? WHERE member_id = ?';
-  const values = [false, memberId]; // Assuming 'active' is a boolean column
-  
-  connection.query(sql, values, (err, result) => {
+
+  const sqlUpdateMember = 'UPDATE members SET active = ? WHERE member_id = ?';
+  const valuesUpdateMember = [false, memberId];
+
+  const sqlFetchBedId = 'SELECT bed_id FROM members WHERE member_id = ?';
+  const sqlUpdateBedAvailability = 'UPDATE beds SET available = ? WHERE id = ?';
+
+  connection.query(sqlUpdateMember, valuesUpdateMember, (err, result) => {
       if (err) {
           console.error('Error updating member:', err);
           res.status(500).json({ error: 'Error updating member' });
           return;
       }
-      console.log('Member updated successfully');
-      res.status(200).json({ message: 'Member deactivated successfully' });
+
+      connection.query(sqlFetchBedId, [memberId], (err, rows) => {
+          if (err) {
+              console.error('Error fetching bed id:', err);
+              res.status(500).json({ error: 'Error updating member' });
+              return;
+          }
+
+          if (rows.length === 0) {
+              console.error('No bed found for member:', memberId);
+              res.status(404).json({ error: 'No bed found for member' });
+              return;
+          }
+
+          const bedId = rows[0].bed_id;
+
+          connection.query(sqlUpdateBedAvailability, [0, bedId], (err, result) => {
+              if (err) {
+                  console.error('Error updating bed availability:', err);
+                  res.status(500).json({ error: 'Error updating member' });
+                  return;
+              }
+
+              console.log('Member and bed updated successfully');
+              res.status(200).json({ message: 'Member deactivated successfully' });
+          });
+      });
   });
 });
-
 app.get('/api/vacancies', (req, res) => {
   const vacancies = { '1 sharing': 0, '2 sharing': 0, '3 sharing': 0, '4 sharing': 0 };
 
