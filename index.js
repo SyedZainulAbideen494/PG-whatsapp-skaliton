@@ -21,7 +21,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 
 // URL Constants
-const BASE_URL = 'https://0cdd7286942417b0756ea4b4d4a54d2f.serveo.net';
+const BASE_URL = 'https://srv491382.hstgr.cloud/pg/';
 const SUCCESS_URL = `${BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&sender_id=`;
 const CANCEL_URL = `${BASE_URL}/cancel`;
 const TICKET_URL = `${BASE_URL}/tickets/`;
