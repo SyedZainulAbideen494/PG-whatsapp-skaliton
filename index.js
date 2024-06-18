@@ -1051,8 +1051,8 @@ app.put('/edit/member/:memberId', (req, res) => {
     }
 
     if (results.length === 0) {
-      console.error('bed_id not found for the specified building, floor, flat, room, and bed');
-      res.status(404).send('bed_id not found for the specified building, floor, flat, room, and bed');
+      console.error('bed already taken');
+      res.status(404).send('bed already taken');
       return;
     }
 
