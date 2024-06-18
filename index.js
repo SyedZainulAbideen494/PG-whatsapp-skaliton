@@ -829,15 +829,6 @@ app.get('/pg/success', async (req, res) => {
 });
 
 
-
-
-
-
-
-
-
-
-
 /*Admin Panel code*/
 
 app.post('/addUser', (req, res) => {
