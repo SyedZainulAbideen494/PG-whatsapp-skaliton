@@ -1028,24 +1028,21 @@ app.post('/add/members', (req, res) => {
 
 app.put('/edit/member/:memberId', (req, res) => {
   const memberId = req.params.memberId;
-  const { name, phoneno, bed, building, floor, flat, room } = req.body;
+  const { name, phoneno, building, floor, flat, room, bed } = req.body;
 
-  // Check if phoneNumber is provided
-  if (!phoneno) {
-    res.status(400).send('Phone number is required');
-    return;
-  }
-
-  // Get the bed_id
+  // Query to get bed_id for the specified member details
   const getBedIdQuery = `
-      SELECT beds.id AS bed_id
-      FROM buildings
-      INNER JOIN floors ON buildings.id = floors.building_id
-      INNER JOIN flats ON floors.id = flats.floor_id
-      INNER JOIN rooms ON flats.id = rooms.flat_id
-      INNER JOIN beds ON rooms.id = beds.room_id
-      WHERE buildings.name = ? AND floors.floor_number = ? AND flats.flat_number = ? AND rooms.room_number = ? AND beds.bed_number = ?
+    SELECT beds.id AS bed_id
+    FROM buildings
+    INNER JOIN floors ON buildings.id = floors.building_id
+    INNER JOIN flats ON floors.id = flats.floor_id
+    INNER JOIN rooms ON flats.id = rooms.flat_id
+    INNER JOIN beds ON rooms.id = beds.room_id
+    WHERE buildings.name = ? AND floors.floor_number = ? 
+      AND flats.flat_number = ? AND rooms.room_number = ? 
+      AND beds.bed_number = ?
   `;
+
   connection.query(getBedIdQuery, [building, floor, flat, room, bed], (err, results) => {
     if (err) {
       console.error('Error getting bed_id:', err);
@@ -1063,22 +1060,60 @@ app.put('/edit/member/:memberId', (req, res) => {
 
     // Update member details
     const updateMemberQuery = `
-          UPDATE members
-          SET name = ?, phoneno = ?, bed_id = ?
-          WHERE member_id = ?
-      `;
+      UPDATE members
+      SET name = ?, phoneno = ?, bed_id = ?
+      WHERE member_id = ?
+    `;
+
     connection.query(updateMemberQuery, [name, phoneno, bed_id, memberId], (err, result) => {
       if (err) {
         console.error('Error updating member details:', err);
         res.status(500).send('Error updating member details');
         return;
       }
+
       if (result.affectedRows === 0) {
         console.error('No member found with the specified member_id:', memberId);
         res.status(404).send('No member found with the specified member_id');
         return;
       }
-      res.status(200).send('Member details updated successfully');
+
+      // Set the bed availability to 1 for the assigned bed_id
+      const setBedAvailableQuery = `
+        UPDATE beds
+        SET available = 1
+        WHERE id = ?
+      `;
+      
+      connection.query(setBedAvailableQuery, [bed_id], (err, result) => {
+        if (err) {
+          console.error('Error setting bed availability:', err);
+          res.status(500).send('Error setting bed availability');
+          return;
+        }
+
+        // Reset all beds availability to 0 where not assigned to active members
+        const resetBedAvailabilityQuery = `
+          UPDATE beds
+          SET available = 0
+          WHERE id NOT IN (
+            SELECT bed_id
+            FROM members
+            WHERE active = 1
+          )
+        `;
+        
+        connection.query(resetBedAvailabilityQuery, (err, result) => {
+          if (err) {
+            console.error('Error resetting bed availability:', err);
+            res.status(500).send('Error resetting bed availability');
+            return;
+          }
+          
+          // All operations completed successfully
+          res.status(200).send('Member details updated successfully');
+        });
+      });
     });
   });
 });
