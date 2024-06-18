@@ -13,7 +13,7 @@ const path = require("path");
 const nodemailer = require('nodemailer');
 const uuid = require('uuid');
 const cron = require('node-cron');
-const PORT = process.env.PORT || 4444;
+const PORT = process.env.PORT || 8080;
 const axios = require('axios');
 const stripe = require('stripe')('sk_test_51LoS3iSGyKMMAZwstPlmLCEi1eBUy7MsjYxiKsD1lT31LQwvPZYPvqCdfgH9xl8KgeJoVn6EVPMgnMRsFInhnnnb00WhKhMOq7');
 const { PDFDocument, StandardFonts, rgb } = require('pdf-lib');
@@ -21,7 +21,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 
 // URL Constants
-const BASE_URL = 'https://srv491382.hstgr.cloud/pg';
+const BASE_URL = 'https://0cdd7286942417b0756ea4b4d4a54d2f.serveo.net';
 const SUCCESS_URL = `${BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&sender_id=`;
 const CANCEL_URL = `${BASE_URL}/cancel`;
 const TICKET_URL = `${BASE_URL}/tickets/`;
@@ -54,7 +54,7 @@ const connection = mysql.createPool({
   connectionLimit: 10, // Maximum number of connections in the pool
   host: "localhost",
   user: "root",
-  password: "65109_mysql",
+  password: "Englishps#4",
   database: "whatsapp_pg",
 });
 
@@ -166,10 +166,10 @@ app.post('/pg/webhook', (req, res) => {
           const buildings = ["Building 1", "Building 2", "Building 3"]; // Add your building names here
           let currentBuildingIndex = 0;
           let message = "";
-
+        
           const fetchRoomDetails = async () => {
             const buildingName = buildings[currentBuildingIndex];
-
+        
             try {
               // Fetch available beds in 1-sharing rooms for the specified building
               const bedResults = await new Promise((resolve, reject) => {
@@ -191,11 +191,11 @@ app.post('/pg/webhook', (req, res) => {
                   }
                 );
               });
-
+        
               if (bedResults.length > 0) {
                 // Add building heading to the message
                 message += `\n🏢 Building: ${buildingName} 🏢\n`;
-
+        
                 // Group beds by floor, flat, and room
                 const groupedBeds = {};
                 bedResults.forEach((bed) => {
@@ -205,7 +205,7 @@ app.post('/pg/webhook', (req, res) => {
                   }
                   groupedBeds[key].push(bed.bed_number);
                 });
-
+        
                 // Generate message with formatted room details
                 Object.entries(groupedBeds).forEach(([room, beds]) => {
                   const [floor, flat, roomNumber] = room.split('-');
@@ -215,30 +215,20 @@ app.post('/pg/webhook', (req, res) => {
                   });
                   message += "\n";
                 });
-
-                // Send the constructed message for the building
-                sendWhatsAppMessage({
-                  messaging_product: "whatsapp",
-                  to: senderId,
-                  type: "text",
-                  text: {
-                    body: message
-                  }
-                });
               } else {
                 // If no available rooms are found in the building, inform the user
                 message += `\n🏢 Building: ${buildingName} 🏢\n`;
                 message += `Sorry, there are no available 1-sharing rooms in ${buildingName} at the moment.\n\n`;
               }
-
+        
               // Move to the next building
               currentBuildingIndex++;
-
+        
               // If there are more buildings, fetch room details for the next building
               if (currentBuildingIndex < buildings.length) {
                 await fetchRoomDetails();
               } else {
-                // Send the constructed message
+                // Send the constructed message after processing all buildings
                 sendWhatsAppMessage({
                   messaging_product: "whatsapp",
                   to: senderId,
@@ -260,7 +250,7 @@ app.post('/pg/webhook', (req, res) => {
               });
             }
           };
-
+        
           // Save conversation to database and start fetching room details for the first building
           connection.query(
             'INSERT INTO phone_numbers (phone_number, conversation_type, created_at) VALUES (?, ?, ?)',
@@ -796,20 +786,26 @@ function sendWhatsAppMessage(data) {
 }
 
 // Webhook verification endpoint (GET request)
-app.get('/pg/webhook', (req, res) => {
-  const VERIFY_TOKEN = "EAAFsUoRPg1QBOzpnPGEpxBDKEw93j35D2V0Qg5C8O58FNQZAxWXWMo0XJZB6ezMoUWY6xNC6AhPGUZCjt0w8AJwuyAfkhjnZAn73tOU88pXhTxAJevtKm1GSGkDFwh5y79N1eX9LWhD3ceZAZBr36MDd1fgAy0mP9UfVDIugUDGxcl64vAhpNuj7FkbG36HGJn3RQus1iw92DiNn4w"; // Replace with your verification token
-  const mode = req.query['hub.mode'];
-  const token = req.query['hub.verify_token'];
-  const challenge = req.query['hub.challenge'];
+const VERIFY_TOKEN = 'EAAFsUoRPg1QBOzpnPGEpxBDKEw93j35D2V0Qg5C8O58FNQZAxWXWMo0XJZB6ezMoUWY6xNC6AhPGUZCjt0w8AJwuyAfkhjnZAn73tOU88pXhTxAJevtKm1GSGkDFwh5y79N1eX9LWhD3ceZAZBr36MDd1fgAy0mP9UfVDIugUDGxcl64vAhpNuj7FkbG36HGJn3RQus1iw92DiNn4w';
 
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
-    console.log('Webhook verified!');
-    res.status(200).send(challenge);
-  } else {
-    console.error('Failed verification. Make sure the verification tokens match.');
-    res.sendStatus(403);
-  }
+app.get('/pg/webhook', (req, res) => {
+    const mode = req.query['hub.mode'];
+    const token = req.query['hub.verify_token'];
+    const challenge = req.query['hub.challenge'];
+
+    if (mode && token) {
+        if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+            console.log('WEBHOOK_VERIFIED');
+            res.status(200).send(challenge);
+        } else {
+            res.sendStatus(403);
+        }
+    } else {
+        res.sendStatus(400);
+    }
 });
+
+
 
 // GET endpoint for testing
 app.get('/pg', (req, res) => {
