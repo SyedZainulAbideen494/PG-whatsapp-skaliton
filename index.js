@@ -21,7 +21,7 @@ const QRCode = require('qrcode');
 const fs = require('fs');
 
 // URL Constants
-const BASE_URL = 'https://srv491382.hstgr.cloud/pg/';
+const BASE_URL = 'http://localhost:8080';
 const SUCCESS_URL = `${BASE_URL}/success?session_id={CHECKOUT_SESSION_ID}&sender_id=`;
 const CANCEL_URL = `${BASE_URL}/cancel`;
 const TICKET_URL = `${BASE_URL}/tickets/`;
@@ -48,7 +48,7 @@ app.use(cors({
 }));
 
 // Serve static files from the 'public' directory
-app.use("/pg", express.static(path.join(__dirname, 'public')));
+app.use("/", express.static(path.join(__dirname, 'public')));
 
 const connection = mysql.createPool({
   connectionLimit: 10, // Maximum number of connections in the pool
@@ -68,7 +68,7 @@ connection.getConnection((err) => {
 
 const userStates = {};
 
-app.post('/pg/webhook', (req, res) => {
+app.post('/webhook', (req, res) => {
   console.log('Incoming POST request:', JSON.stringify(req.body, null, 2)); // Log incoming POST request payload
 
   try {
@@ -159,7 +159,7 @@ app.post('/pg/webhook', (req, res) => {
             to: senderId,
             type: "text",
             text: {
-              body: "Hello! 😊 We're excited to welcome you to Lyxn Labs PG. Here’s how to find us:\n\n*Address:*\nno 2, 15th main,\nVasanth Nagar,\nopposite to the shell petrol pump,\nBanglore 560001.\n\n*Directions:*\nFor your convenience, use this - https://maps.app.goo.gl/cX5LytoeHbkpDaUM6 - to get exact directions.\n\nIf you need any help finding us, just reply to this message or give us a call. We look forward to your stay!\n\nBest,\nLyxn Labs Team"
+              body: "Hello! 😊 We're excited to welcome you to our PG. Here’s how to find us:\n\n*Address:*\nno 2, 15th main,\nVasanth Nagar,\nopposite to the shell petrol pump,\nBanglore 560001.\n\n*Directions:*\nFor your convenience, use this - https://maps.app.goo.gl/cX5LytoeHbkpDaUM6 - to get exact directions.\n\nIf you need any help finding us, just reply to this message or give us a call. We look forward to your stay!\n\nBest,\nLyxn Labs Team"
             }
           });
         } else if (messageBody === '1 sharing') {
@@ -208,6 +208,7 @@ app.post('/pg/webhook', (req, res) => {
         
                 // Generate message with formatted room details
                 Object.entries(groupedBeds).forEach(([room, beds]) => {
+                  message += "Here are the available options:\n";
                   const [floor, flat, roomNumber] = room.split('-');
                   message += `🔹 Floor ${floor}, Flat ${flat}, Room ${roomNumber}:\n`;
                   beds.forEach((bed, index) => {
@@ -215,11 +216,11 @@ app.post('/pg/webhook', (req, res) => {
                   });
                   message += "\n";
                 });
-              } else {
-                // If no available rooms are found in the building, inform the user
-                message += `\n🏢 Building: ${buildingName} 🏢\n`;
-                message += `Sorry, there are no available 1-sharing rooms in ${buildingName} at the moment.\n\n`;
-              }
+                } else {
+                  // If no available rooms are found in the building, inform the user
+                  message += `\n🏢 Building: ${buildingName} 🏢\n`;
+                  message += `Sorry, there are no available 4-sharing rooms in ${buildingName} at the moment.\n\n`;
+                }
         
               // Move to the next building
               currentBuildingIndex++;
@@ -311,6 +312,7 @@ app.post('/pg/webhook', (req, res) => {
 
                 // Generate message with formatted room details
                 Object.entries(groupedBeds).forEach(([room, beds]) => {
+                  message += "Here are the available options:\n";
                   const [floor, flat, roomNumber] = room.split('-');
                   message += `🔹 Floor ${floor}, Flat ${flat}, Room ${roomNumber}:\n`;
                   beds.forEach((bed, index) => {
@@ -318,12 +320,11 @@ app.post('/pg/webhook', (req, res) => {
                   });
                   message += "\n";
                 });
-              } else {
-                // If no available rooms are found in the building, inform the user
-                message += `\n🏢 Building: ${buildingName} 🏢\n`;
-                message += `Sorry, there are no available 2-sharing rooms in ${buildingName} at the moment.\n\n`;
-              }
-
+                } else {
+                  // If no available rooms are found in the building, inform the user
+                  message += `\n🏢 Building: ${buildingName} 🏢\n`;
+                  message += `Sorry, there are no available 4-sharing rooms in ${buildingName} at the moment.\n\n`;
+                }
               // Move to the next building
               currentBuildingIndex++;
 
@@ -414,6 +415,7 @@ app.post('/pg/webhook', (req, res) => {
 
                 // Generate message with formatted room details
                 Object.entries(groupedBeds).forEach(([room, beds]) => {
+                  message += "Here are the available options:\n";
                   const [floor, flat, roomNumber] = room.split('-');
                   message += `🔹 Floor ${floor}, Flat ${flat}, Room ${roomNumber}:\n`;
                   beds.forEach((bed, index) => {
@@ -421,12 +423,11 @@ app.post('/pg/webhook', (req, res) => {
                   });
                   message += "\n";
                 });
-              } else {
-                // If no available rooms are found in the building, inform the user
-                message += `\n🏢 Building: ${buildingName} 🏢\n`;
-                message += `Sorry, there are no available 3-sharing rooms in ${buildingName} at the moment.\n\n`;
-              }
-
+                } else {
+                  // If no available rooms are found in the building, inform the user
+                  message += `\n🏢 Building: ${buildingName} 🏢\n`;
+                  message += `Sorry, there are no available 4-sharing rooms in ${buildingName} at the moment.\n\n`;
+                }
               // Move to the next building
               currentBuildingIndex++;
 
@@ -517,6 +518,7 @@ app.post('/pg/webhook', (req, res) => {
 
                 // Generate message with formatted room details
                 Object.entries(groupedBeds).forEach(([room, beds]) => {
+                  message += "Here are the available options:\n";
                   const [floor, flat, roomNumber] = room.split('-');
                   message += `🔹 Floor ${floor}, Flat ${flat}, Room ${roomNumber}:\n`;
                   beds.forEach((bed, index) => {
@@ -524,11 +526,11 @@ app.post('/pg/webhook', (req, res) => {
                   });
                   message += "\n";
                 });
-              } else {
-                // If no available rooms are found in the building, inform the user
-                message += `\n🏢 Building: ${buildingName} 🏢\n`;
-                message += `Sorry, there are no available 4-sharing rooms in ${buildingName} at the moment.\n\n`;
-              }
+                } else {
+                  // If no available rooms are found in the building, inform the user
+                  message += `\n🏢 Building: ${buildingName} 🏢\n`;
+                  message += `Sorry, there are no available 4-sharing rooms in ${buildingName} at the moment.\n\n`;
+                }
 
               // Move to the next building
               currentBuildingIndex++;
@@ -788,7 +790,7 @@ function sendWhatsAppMessage(data) {
 // Webhook verification endpoint (GET request)
 const VERIFY_TOKEN = 'EAAFsUoRPg1QBOzpnPGEpxBDKEw93j35D2V0Qg5C8O58FNQZAxWXWMo0XJZB6ezMoUWY6xNC6AhPGUZCjt0w8AJwuyAfkhjnZAn73tOU88pXhTxAJevtKm1GSGkDFwh5y79N1eX9LWhD3ceZAZBr36MDd1fgAy0mP9UfVDIugUDGxcl64vAhpNuj7FkbG36HGJn3RQus1iw92DiNn4w';
 
-app.get('/pg/webhook', (req, res) => {
+app.get('/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
@@ -808,12 +810,12 @@ app.get('/pg/webhook', (req, res) => {
 
 
 // GET endpoint for testing
-app.get('/pg', (req, res) => {
+app.get('/', (req, res) => {
   res.send('Welcome to the Facebook Messenger webhook!');
 });
 
 // Success endpoint to handle successful payments
-app.get('/pg/success', async (req, res) => {
+app.get('/success', async (req, res) => {
   const sessionId = req.query.session_id;
   const senderId = req.query.sender_id;
   if (!sessionId || !senderId) {
@@ -948,84 +950,6 @@ app.post("/login", (req, res) => {
   );
 });
 
-app.post('/add/members', (req, res) => {
-  const { name, phoneNumber, bed, building, floor, flat, room } = req.body;
-
-  // Get the bed_id
-  const getBedIdQuery = `
-      SELECT beds.id AS bed_id
-      FROM buildings
-      INNER JOIN floors ON buildings.id = floors.building_id
-      INNER JOIN flats ON floors.id = flats.floor_id
-      INNER JOIN rooms ON flats.id = rooms.flat_id
-      INNER JOIN beds ON rooms.id = beds.room_id
-      WHERE buildings.name = ? AND floors.floor_number = ? AND flats.flat_number = ? AND rooms.room_number = ? AND beds.bed_number = ?
-  `;
-  connection.query(getBedIdQuery, [building, floor, flat, room, bed], (err, results) => {
-    if (err) {
-      console.error('Error getting bed_id:', err);
-      res.status(500).send('Error getting bed_id');
-      return;
-    }
-
-    if (results.length === 0) {
-      console.error('bed_id not found for the specified building, floor, flat, room, and bed');
-      res.status(404).send('bed_id not found for the specified building, floor, flat, room, and bed');
-      return;
-    }
-
-    const { bed_id } = results[0];
-
-    // Check if the bed is already taken
-    const checkBedAvailabilityQuery = `
-          SELECT COUNT(*) AS count 
-          FROM members 
-          WHERE bed_id = ? AND active = 1
-      `;
-    connection.query(checkBedAvailabilityQuery, [bed_id], (err, results) => {
-      if (err) {
-        console.error('Error checking bed availability:', err);
-        res.status(500).send('Error checking bed availability');
-        return;
-      }
-
-      if (results[0].count > 0) {
-        console.error('Bed is already taken');
-        res.status(400).send('Bed is already taken');
-        return;
-      }
-
-      // Update the availability of the bed
-      const updateBedAvailabilityQuery = `
-              UPDATE beds
-              SET available = 1
-              WHERE id = ?
-          `;
-      connection.query(updateBedAvailabilityQuery, [bed_id], (err, result) => {
-        if (err) {
-          console.error('Error updating bed availability:', err);
-          res.status(500).send('Error updating bed availability');
-          return;
-        }
-
-        // Insert the new member using the retrieved bed_id
-        const addMemberQuery = `
-                  INSERT INTO members (name, phoneno, bed_id, active)
-                  VALUES (?, ?, ?, 1)
-              `;
-        connection.query(addMemberQuery, [name, phoneNumber, bed_id], (err, result) => {
-          if (err) {
-            console.error('Error inserting member:', err);
-            res.status(500).send('Error inserting member');
-            return;
-          }
-          res.status(200).send('Member added successfully');
-        });
-      });
-    });
-  });
-});
-
 app.put('/edit/member/:memberId', (req, res) => {
   const memberId = req.params.memberId;
   const { name, phoneno, building, floor, flat, room, bed } = req.body;
@@ -1117,6 +1041,86 @@ app.put('/edit/member/:memberId', (req, res) => {
     });
   });
 });
+
+app.post('/add/members', (req, res) => {
+  const { name, phoneNumber, bed, building, floor, flat, room } = req.body;
+
+  // Get the bed_id
+  const getBedIdQuery = `
+      SELECT beds.id AS bed_id
+      FROM buildings
+      INNER JOIN floors ON buildings.id = floors.building_id
+      INNER JOIN flats ON floors.id = flats.floor_id
+      INNER JOIN rooms ON flats.id = rooms.flat_id
+      INNER JOIN beds ON rooms.id = beds.room_id
+      WHERE buildings.name = ? AND floors.floor_number = ? AND flats.flat_number = ? AND rooms.room_number = ? AND beds.bed_number = ?
+  `;
+  connection.query(getBedIdQuery, [building, floor, flat, room, bed], (err, results) => {
+    if (err) {
+      console.error('Error getting bed_id:', err);
+      res.status(500).send('Error getting bed_id');
+      return;
+    }
+
+    if (results.length === 0) {
+      console.error('bed_id not found for the specified building, floor, flat, room, and bed');
+      res.status(404).send('bed_id not found for the specified building, floor, flat, room, and bed');
+      return;
+    }
+
+    const { bed_id } = results[0];
+
+    // Check if the bed is already taken
+    const checkBedAvailabilityQuery = `
+          SELECT COUNT(*) AS count 
+          FROM members 
+          WHERE bed_id = ? AND active = 1
+      `;
+    connection.query(checkBedAvailabilityQuery, [bed_id], (err, results) => {
+      if (err) {
+        console.error('Error checking bed availability:', err);
+        res.status(500).send('Error checking bed availability');
+        return;
+      }
+
+      if (results[0].count > 0) {
+        console.error('Bed is already taken');
+        res.status(400).send('Bed is already taken');
+        return;
+      }
+
+      // Update the availability of the bed
+      const updateBedAvailabilityQuery = `
+              UPDATE beds
+              SET available = 1
+              WHERE id = ?
+          `;
+      connection.query(updateBedAvailabilityQuery, [bed_id], (err, result) => {
+        if (err) {
+          console.error('Error updating bed availability:', err);
+          res.status(500).send('Error updating bed availability');
+          return;
+        }
+
+        // Insert the new member using the retrieved bed_id
+        const addMemberQuery = `
+                  INSERT INTO members (name, phoneno, bed_id, active)
+                  VALUES (?, ?, ?, 1)
+              `;
+        connection.query(addMemberQuery, [name, phoneNumber, bed_id], (err, result) => {
+          if (err) {
+            console.error('Error inserting member:', err);
+            res.status(500).send('Error inserting member');
+            return;
+          }
+          res.status(200).send('Member added successfully');
+        });
+      });
+    });
+  });
+});
+
+
 app.get('/display/members', (req, res) => {
   const membersQuery = 'SELECT * FROM members WHERE active = 1';
 
@@ -1242,50 +1246,8 @@ app.get('/display/members', (req, res) => {
     }
   });
 });
-app.put('/api/updateMember/:id', (req, res) => {
-  const memberId = req.params.id;
 
-  const sqlUpdateMember = 'UPDATE members SET active = ? WHERE member_id = ?';
-  const valuesUpdateMember = [false, memberId];
 
-  const sqlFetchBedId = 'SELECT bed_id FROM members WHERE member_id = ?';
-  const sqlUpdateBedAvailability = 'UPDATE beds SET available = ? WHERE id = ?';
-
-  connection.query(sqlUpdateMember, valuesUpdateMember, (err, result) => {
-    if (err) {
-      console.error('Error updating member:', err);
-      res.status(500).json({ error: 'Error updating member' });
-      return;
-    }
-
-    connection.query(sqlFetchBedId, [memberId], (err, rows) => {
-      if (err) {
-        console.error('Error fetching bed id:', err);
-        res.status(500).json({ error: 'Error updating member' });
-        return;
-      }
-
-      if (rows.length === 0) {
-        console.error('No bed found for member:', memberId);
-        res.status(404).json({ error: 'No bed found for member' });
-        return;
-      }
-
-      const bedId = rows[0].bed_id;
-
-      connection.query(sqlUpdateBedAvailability, [0, bedId], (err, result) => {
-        if (err) {
-          console.error('Error updating bed availability:', err);
-          res.status(500).json({ error: 'Error updating member' });
-          return;
-        }
-
-        console.log('Member and bed updated successfully');
-        res.status(200).json({ message: 'Member deactivated successfully' });
-      });
-    });
-  });
-});
 app.get('/api/vacancies', (req, res) => {
   const vacancies = { '1 sharing': 0, '2 sharing': 0, '3 sharing': 0, '4 sharing': 0 };
 
@@ -1341,8 +1303,364 @@ app.get('/api/phone-numbers', (req, res) => {
     res.json(results);
   });
 });
+app.post('/addMembers', (req, res) => {
+  const { name, phoneNo, bedId } = req.body;
 
-// Start the server
+  connection.query('INSERT INTO members (name, phoneno, bed_id) VALUES (?, ?, ?)', [name, phoneNo, bedId], (err, results) => {
+    if (err) return res.status(500).send(err);
+
+    connection.query('UPDATE beds SET available = 1 WHERE id = ?', [bedId], (err, results) => {
+      if (err) return res.status(500).send(err);
+      res.send('Member added and bed updated');
+    });
+  });
+});
+
+app.get('/beds/:sharing', (req, res) => {
+  const sharing = req.params.sharing;
+
+  connection.query(`
+    SELECT 
+      beds.id AS bedId, 
+      beds.bed_number,
+      rooms.room_number,
+      flats.flat_number,
+      floors.floor_number,
+      buildings.name AS buildingName
+    FROM beds
+    JOIN rooms ON beds.room_id = rooms.id
+    JOIN flats ON rooms.flat_id = flats.id
+    JOIN floors ON flats.floor_id = floors.id
+    JOIN buildings ON floors.building_id = buildings.id
+    WHERE beds.available = 0 AND rooms.sharing = ?
+  `, [sharing], (err, results) => {
+    if (err) return res.status(500).send(err);
+    res.json(results);
+  });
+});
+
+app.put('/api/updateMember/:id', (req, res) => {
+  const memberId = req.params.id;
+
+  const sqlUpdateMember = 'UPDATE members SET active = ? WHERE member_id = ?';
+  const valuesUpdateMember = [false, memberId];
+
+  const sqlFetchBedId = 'SELECT bed_id FROM members WHERE member_id = ?';
+  const sqlUpdateBedAvailability = 'UPDATE beds SET available = ? WHERE id = ?';
+
+  connection.query(sqlUpdateMember, valuesUpdateMember, (err, result) => {
+    if (err) {
+      console.error('Error updating member:', err);
+      res.status(500).json({ error: 'Error updating member' });
+      return;
+    }
+
+    connection.query(sqlFetchBedId, [memberId], (err, rows) => {
+      if (err) {
+        console.error('Error fetching bed id:', err);
+        res.status(500).json({ error: 'Error updating member' });
+        return;
+      }
+
+      if (rows.length === 0) {
+        console.error('No bed found for member:', memberId);
+        res.status(404).json({ error: 'No bed found for member' });
+        return;
+      }
+
+      const bedId = rows[0].bed_id;
+
+      connection.query(sqlUpdateBedAvailability, [0, bedId], (err, result) => {
+        if (err) {
+          console.error('Error updating bed availability:', err);
+          res.status(500).json({ error: 'Error updating member' });
+          return;
+        }
+
+        console.log('Member and bed updated successfully');
+        res.status(200).json({ message: 'Member deactivated successfully' });
+      });
+    });
+  });
+});
+
+// Cron job to check and deactivate members based on date_vacating
+cron.schedule('*/30 * * * * *', () => {
+  const today = new Date().toISOString().slice(0, 10); // Get today's date in YYYY-MM-DD format
+
+  const sqlSelectMembersToDeactivate = 'SELECT member_id FROM vacating_members WHERE date_vacating = ?';
+  connection.query(sqlSelectMembersToDeactivate, [today], (err, rows) => {
+    if (err) {
+      console.error('Error selecting members to deactivate:', err);
+      return;
+    }
+
+    rows.forEach((row) => {
+      const memberId = row.member_id;
+      
+      // Call the API to deactivate member
+      const apiUrl = `${BASE_URL}/api/updateMember/${memberId}`;
+      fetch(apiUrl, { method: 'PUT' })
+        .then(response => {
+          if (!response.ok) {
+            console.error(`Failed to deactivate member ${memberId}`);
+          }
+        })
+        .catch(error => {
+          console.error(`Error deactivating member ${memberId}:`, error);
+        });
+    });
+  });
+});
+
+// Endpoint to fetch all members
+app.get('/api/members', (req, res) => {
+  connection.getConnection((err, connection) => {
+      if (err) {
+          console.error('Error connecting to database:', err);
+          res.status(500).json({ error: 'Database connection error' });
+          return;
+      }
+
+      connection.query('SELECT * FROM members', (error, results, fields) => {
+          connection.release();
+
+          if (error) {
+              console.error('Error executing query:', error);
+              res.status(500).json({ error: 'Query execution error' });
+              return;
+          }
+
+          res.json(results);
+      });
+  });
+});
+
+app.get('/api/total-rent', (req, res) => {
+  connection.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error connecting to database:', err);
+      res.status(500).json({ error: 'Database connection error' });
+      return;
+    }
+
+    // Query to calculate total rent based on costing column for active members
+    const query = `
+      SELECT SUM(costing) AS totalRent 
+      FROM members 
+      WHERE active = 1
+    `;
+
+    connection.query(query, (error, results, fields) => {
+      connection.release(); // Release the connection back to the pool
+
+      if (error) {
+        console.error('Error executing query:', error);
+        res.status(500).json({ error: 'Query execution error' });
+        return;
+      }
+
+      // Extract total rent from results
+      const totalRent = results[0].totalRent || 0;
+      res.json({ totalRent }); // Return totalRent as JSON object
+    });
+  });
+});
+// Endpoint to fetch members leaving this month
+app.get('/api/leaving-members', (req, res) => {
+  connection.getConnection((err, connection) => {
+      if (err) {
+          console.error('Error connecting to database:', err);
+          res.status(500).json({ error: 'Database connection error' });
+          return;
+      }
+
+      connection.query('SELECT * FROM members WHERE MONTH(date_leaving) = MONTH(CURDATE()) AND YEAR(date_leaving) = YEAR(CURDATE())', (error, results, fields) => {
+          connection.release();
+
+          if (error) {
+              console.error('Error executing query:', error);
+              res.status(500).json({ error: 'Query execution error' });
+              return;
+          }
+
+          res.json(results);
+      });
+  });
+});
+
+// Endpoint to fetch members with rent not paid this month
+app.get('/api/rent-not-paid', (req, res) => {
+  connection.getConnection((err, connection) => {
+      if (err) {
+          console.error('Error connecting to database:', err);
+          res.status(500).json({ error: 'Database connection error' });
+          return;
+      }
+
+      connection.query('SELECT * FROM members WHERE payment_pending = 1', (error, results, fields) => {
+          connection.release();
+
+          if (error) {
+              console.error('Error executing query:', error);
+              res.status(500).json({ error: 'Query execution error' });
+              return;
+          }
+
+          res.json(results);
+      });
+  });
+});
+
+// Endpoint to fetch upcoming joining members
+app.get('/api/joining-members', (req, res) => {
+  connection.getConnection((err, connection) => {
+      if (err) {
+          console.error('Error connecting to database:', err);
+          res.status(500).json({ error: 'Database connection error' });
+          return;
+      }
+
+      connection.query('SELECT * FROM members WHERE date_join > CURDATE()', (error, results, fields) => {
+          connection.release();
+
+          if (error) {
+              console.error('Error executing query:', error);
+              res.status(500).json({ error: 'Query execution error' });
+              return;
+          }
+
+          res.json(results);
+      });
+  });
+});
+
+// API Endpoint to update rent payment status
+app.put('/api/mark-rent-paid/:id', (req, res) => {
+  const memberId = req.params.id;
+  const { payment_pending } = req.body; // Assuming 'payment_pending' is sent in the request body
+
+  const sql = 'UPDATE members SET payment_pending = ? WHERE member_id = ?';
+  connection.query(sql, [payment_pending, memberId], (err, result) => {
+    if (err) {
+      console.error('Error updating rent payment status:', err);
+      res.status(500).json({ error: 'Failed to update rent payment status' });
+      return;
+    }
+    console.log(`Rent payment status updated for member ID ${memberId}`);
+    res.status(200).json({ message: 'Rent payment status updated successfully' });
+  });
+});
+
+app.get('/api/members-paid-rent', async (req, res) => {
+  connection.getConnection((err, connection) => {
+    if (err) {
+        console.error('Error connecting to database:', err);
+        res.status(500).json({ error: 'Database connection error' });
+        return;
+    }
+
+    connection.query('SELECT * FROM members WHERE payment_pending = 0', (error, results, fields) => {
+        connection.release();
+
+        if (error) {
+            console.error('Error executing query:', error);
+            res.status(500).json({ error: 'Query execution error' });
+            return;
+        }
+
+        res.json(results);
+    });
+});
+});
+
+// API Endpoint to update rent payment status
+app.put('/api/mark-rent-not-paid/:id', (req, res) => {
+  const memberId = req.params.id;
+  const { payment_pending } = req.body; // Assuming 'payment_pending' is sent in the request body
+
+  const sql = 'UPDATE members SET payment_pending = ? WHERE member_id = ?';
+  connection.query(sql, [payment_pending, memberId], (err, result) => {
+    if (err) {
+      console.error('Error updating rent payment status:', err);
+      res.status(500).json({ error: 'Failed to update rent payment status' });
+      return;
+    }
+    console.log(`Rent payment status updated for member ID ${memberId}`);
+    res.status(200).json({ message: 'Rent payment status updated successfully' });
+  });
+});
+
+
+app.get('/api/vacating-members', (req, res) => {
+  const query = `
+    SELECT m.*, vm.date_vacating
+    FROM vacating_members vm
+    JOIN members m ON vm.member_id = m.member_id
+    WHERE m.active = 1
+  `;
+  
+  connection.query(query, (err, results) => {
+    if (err) {
+      console.error(err);
+      res.status(500).json({ error: 'Database error' });
+    } else {
+      res.json(results);
+    }
+  });
+});
+
+
+app.delete('/api/vacating-members/:id', (req, res) => {
+  const { id } = req.params;
+  const query = `
+    DELETE FROM vacating_members
+    WHERE member_id = ?
+  `;
+  connection.query(query, [id], (err, results) => {
+    if (err) {
+      console.error('Error removing vacating member:', err);
+      res.status(500).json({ error: 'Database error' });
+    } else {
+      res.json({ message: 'Vacating member removed successfully' });
+    }
+  });
+});
+
+// API route to insert into vacating_members with duplication check
+app.post('/api/insertVacatingMember/:id', (req, res) => {
+  const memberId = req.params.id;
+  const { deletionDate } = req.body;
+
+  // Check if there's already an entry for the member with the same deletion date
+  const sqlCheckDuplicate = 'SELECT * FROM vacating_members WHERE member_id = ? AND date_vacating = ?';
+  connection.query(sqlCheckDuplicate, [memberId, deletionDate], (err, rows) => {
+    if (err) {
+      console.error('Error checking duplicate entry:', err);
+      res.status(500).json({ error: 'Internal Server Error' });
+      return;
+    }
+
+    if (rows.length > 0) {
+      // If a duplicate entry exists
+      console.log('Duplicate entry found');
+      res.status(409).json({ error: 'Duplicate entry found' }); // Conflict status for duplicate entry
+    } else {
+      // If no duplicate, proceed to insert
+      const sqlInsertVacatingMember = 'INSERT INTO vacating_members (member_id, date_vacating, created_at) VALUES (?, ?, ?)';
+      connection.query(sqlInsertVacatingMember, [memberId, deletionDate, new Date()], (err, result) => {
+        if (err) {
+          console.error('Error inserting vacating member:', err);
+          res.status(500).json({ error: 'Internal Server Error' });
+          return;
+        }
+        console.log('Member vacating information inserted successfully');
+        res.status(200).json({ success: true });
+      });
+    }
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
