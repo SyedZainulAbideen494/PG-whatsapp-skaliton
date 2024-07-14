@@ -798,6 +798,30 @@ async function generateTicketPDF(ticketDetails) {
   return await pdfDoc.save();
 }
 
+app.post('/api/send-whatsapp-reminder', async (req, res) => {
+  const { remniderMember, message } = req.body;
+
+  const data = {
+    messaging_product: "whatsapp",
+    to: `91${remniderMember}`,
+    type: "text",
+    text: { body: message }
+  };
+
+  try {
+    const response = await sendWhatsAppMessage(data);
+    res.status(200).json({ message: 'Message sent successfully', data: response.data });
+  } catch (error) {
+    if (error.response && error.response.data) {
+      console.error('Error sending message:', error.response.data);
+      res.status(500).json({ message: 'Error sending message', error: error.response.data });
+    } else {
+      console.error('Error sending message:', error.message);
+      res.status(500).json({ message: 'Error sending message', error: error.message });
+    }
+  }
+});
+
 // Function to send WhatsApp message
 function sendWhatsAppMessage(data) {
   const config = {
@@ -1024,97 +1048,6 @@ app.put('/edit/member/:memberId', (req, res) => {
           }
 
           res.status(200).send('Member details updated successfully');
-        });
-      });
-    });
-  });
-});
-
-
-app.post('/add/members', (req, res) => {
-  console.log('Received Request Body:', req.body);
-
-  const {
-    name,
-    phoneNo,
-    bedId,
-    dateJoining,
-    dateLeaving,
-    workingLocation,
-    adharNumber,
-    costing,
-    alternativeNumber
-  } = req.body;
-
-  // Get the bed_id
-  const getBedIdQuery = `
-      SELECT beds.id AS bed_id
-      FROM buildings
-      INNER JOIN floors ON buildings.id = floors.building_id
-      INNER JOIN flats ON floors.id = flats.floor_id
-      INNER JOIN rooms ON flats.id = rooms.flat_id
-      INNER JOIN beds ON rooms.id = beds.room_id
-      WHERE beds.id = ?
-  `;
-  connection.query(getBedIdQuery, [bedId], (err, results) => {
-    if (err) {
-      console.error('Error getting bed_id:', err);
-      res.status(500).send('Error getting bed_id');
-      return;
-    }
-
-    if (results.length === 0) {
-      console.error('bed_id not found');
-      res.status(404).send('bed_id not found');
-      return;
-    }
-
-    const { bed_id } = results[0];
-
-    // Check if the bed is already taken
-    const checkBedAvailabilityQuery = `
-          SELECT COUNT(*) AS count 
-          FROM members 
-          WHERE bed_id = ? AND active = 1
-      `;
-    connection.query(checkBedAvailabilityQuery, [bed_id], (err, results) => {
-      if (err) {
-        console.error('Error checking bed availability:', err);
-        res.status(500).send('Error checking bed availability');
-        return;
-      }
-
-      if (results[0].count > 0) {
-        console.error('Bed is already taken');
-        res.status(400).send('Bed is already taken');
-        return;
-      }
-
-      // Update the availability of the bed
-      const updateBedAvailabilityQuery = `
-              UPDATE beds
-              SET available = 1
-              WHERE id = ?
-          `;
-      connection.query(updateBedAvailabilityQuery, [bed_id], (err, result) => {
-        if (err) {
-          console.error('Error updating bed availability:', err);
-          res.status(500).send('Error updating bed availability');
-          return;
-        }
-
-        // Insert the new member using the retrieved bed_id
-        const addMemberQuery = `
-                  INSERT INTO members (name, phoneno, bed_id, date_join, date_leaving, working_location, adhar, costing, alternative_numbers, active)
-                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
-              `;
-        connection.query(addMemberQuery, [name, phoneNo, bed_id, dateJoining, dateLeaving, workingLocation, adharNumber, costing, alternativeNumber], (err, result) => {
-          if (err) {
-            console.error('Error inserting member:', err);
-            res.status(500).send('Error inserting member');
-            return;
-          }
-          res.status(200).send('Member added successfully');
         });
       });
     });
