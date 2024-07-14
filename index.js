@@ -47,6 +47,35 @@ app.use(cors({
   credentials: true,
 }));
 
+
+// Create a multer storage configuration
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+      cb(null, path.join(__dirname, 'public', 'uploads'));
+  },
+  filename: function (req, file, cb) {
+      const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
+      cb(null, uniqueSuffix + path.extname(file.originalname));
+  }
+});
+
+// File filter to allow only images
+const fileFilter = (req, file, cb) => {
+  if (file.mimetype.startsWith('image/')) {
+      cb(null, true);
+  } else {
+      cb(new Error('Only images are allowed!'), false);
+  }
+};
+
+// Create multer instance with the configuration
+const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter
+}).single('photo'); // 'photo' is the field name in the form
+
+
+
 // Serve static files from the 'public' directory
 app.use("/", express.static(path.join(__dirname, 'public')));
 
@@ -952,89 +981,48 @@ app.post("/login", (req, res) => {
 
 app.put('/edit/member/:memberId', (req, res) => {
   const memberId = req.params.memberId;
-  const { name, phoneno, building, floor, flat, room, bed } = req.body;
+  const { name, phoneNo, bedId } = req.body;
 
-  // Query to get bed_id for the specified member details
-  const getBedIdQuery = `
-    SELECT beds.id AS bed_id
-    FROM buildings
-    INNER JOIN floors ON buildings.id = floors.building_id
-    INNER JOIN flats ON floors.id = flats.floor_id
-    INNER JOIN rooms ON flats.id = rooms.flat_id
-    INNER JOIN beds ON rooms.id = beds.room_id
-    WHERE buildings.name = ? AND floors.floor_number = ? 
-      AND flats.flat_number = ? AND rooms.room_number = ? 
-      AND beds.bed_number = ?
-  `;
-
-  connection.query(getBedIdQuery, [building, floor, flat, room, bed], (err, results) => {
+  // Fetch current bed_id of the member
+  connection.query('SELECT bed_id FROM members WHERE member_id = ?', [memberId], (err, results) => {
     if (err) {
-      console.error('Error getting bed_id:', err);
-      res.status(500).send('Error getting bed_id');
-      return;
+      console.error('Error fetching current bed_id:', err);
+      return res.status(500).send('Error fetching current bed_id');
     }
 
     if (results.length === 0) {
-      console.error('bed already taken');
-      res.status(404).send('bed already taken');
-      return;
+      console.error('No member found with the specified member_id:', memberId);
+      return res.status(404).send('No member found with the specified member_id');
     }
 
-    const { bed_id } = results[0];
+    const currentBedId = results[0].bed_id;
 
-    // Update member details
-    const updateMemberQuery = `
-      UPDATE members
-      SET name = ?, phoneno = ?, bed_id = ?
-      WHERE member_id = ?
-    `;
-
-    connection.query(updateMemberQuery, [name, phoneno, bed_id, memberId], (err, result) => {
+    // Update previous bed availability to 0
+    connection.query('UPDATE beds SET available = 0 WHERE id = ?', [currentBedId], (err, results) => {
       if (err) {
-        console.error('Error updating member details:', err);
-        res.status(500).send('Error updating member details');
-        return;
+        console.error('Error updating previous bed availability:', err);
+        return res.status(500).send('Error updating previous bed availability');
       }
 
-      if (result.affectedRows === 0) {
-        console.error('No member found with the specified member_id:', memberId);
-        res.status(404).send('No member found with the specified member_id');
-        return;
-      }
-
-      // Set the bed availability to 1 for the assigned bed_id
-      const setBedAvailableQuery = `
-        UPDATE beds
-        SET available = 1
-        WHERE id = ?
-      `;
-      
-      connection.query(setBedAvailableQuery, [bed_id], (err, result) => {
+      // Update member details with new name, phoneNo, and bedId
+      connection.query('UPDATE members SET name = ?, phoneno = ?, bed_id = ? WHERE member_id = ?', [name, phoneNo, bedId, memberId], (err, results) => {
         if (err) {
-          console.error('Error setting bed availability:', err);
-          res.status(500).send('Error setting bed availability');
-          return;
+          console.error('Error updating member details:', err);
+          return res.status(500).send('Error updating member details');
         }
 
-        // Reset all beds availability to 0 where not assigned to active members
-        const resetBedAvailabilityQuery = `
-          UPDATE beds
-          SET available = 0
-          WHERE id NOT IN (
-            SELECT bed_id
-            FROM members
-            WHERE active = 1
-          )
-        `;
-        
-        connection.query(resetBedAvailabilityQuery, (err, result) => {
+        if (results.affectedRows === 0) {
+          console.error('No member found with the specified member_id:', memberId);
+          return res.status(404).send('No member found with the specified member_id');
+        }
+
+        // Update new bed availability to 1
+        connection.query('UPDATE beds SET available = 1 WHERE id = ?', [bedId], (err, results) => {
           if (err) {
-            console.error('Error resetting bed availability:', err);
-            res.status(500).send('Error resetting bed availability');
-            return;
+            console.error('Error updating new bed availability:', err);
+            return res.status(500).send('Error updating new bed availability');
           }
-          
-          // All operations completed successfully
+
           res.status(200).send('Member details updated successfully');
         });
       });
@@ -1042,8 +1030,21 @@ app.put('/edit/member/:memberId', (req, res) => {
   });
 });
 
+
 app.post('/add/members', (req, res) => {
-  const { name, phoneNumber, bed, building, floor, flat, room } = req.body;
+  console.log('Received Request Body:', req.body);
+
+  const {
+    name,
+    phoneNo,
+    bedId,
+    dateJoining,
+    dateLeaving,
+    workingLocation,
+    adharNumber,
+    costing,
+    alternativeNumber
+  } = req.body;
 
   // Get the bed_id
   const getBedIdQuery = `
@@ -1053,9 +1054,9 @@ app.post('/add/members', (req, res) => {
       INNER JOIN flats ON floors.id = flats.floor_id
       INNER JOIN rooms ON flats.id = rooms.flat_id
       INNER JOIN beds ON rooms.id = beds.room_id
-      WHERE buildings.name = ? AND floors.floor_number = ? AND flats.flat_number = ? AND rooms.room_number = ? AND beds.bed_number = ?
+      WHERE beds.id = ?
   `;
-  connection.query(getBedIdQuery, [building, floor, flat, room, bed], (err, results) => {
+  connection.query(getBedIdQuery, [bedId], (err, results) => {
     if (err) {
       console.error('Error getting bed_id:', err);
       res.status(500).send('Error getting bed_id');
@@ -1063,8 +1064,8 @@ app.post('/add/members', (req, res) => {
     }
 
     if (results.length === 0) {
-      console.error('bed_id not found for the specified building, floor, flat, room, and bed');
-      res.status(404).send('bed_id not found for the specified building, floor, flat, room, and bed');
+      console.error('bed_id not found');
+      res.status(404).send('bed_id not found');
       return;
     }
 
@@ -1104,10 +1105,10 @@ app.post('/add/members', (req, res) => {
 
         // Insert the new member using the retrieved bed_id
         const addMemberQuery = `
-                  INSERT INTO members (name, phoneno, bed_id, active)
-                  VALUES (?, ?, ?, 1)
+                  INSERT INTO members (name, phoneno, bed_id, date_join, date_leaving, working_location, adhar, costing, alternative_numbers, active)
+                  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
               `;
-        connection.query(addMemberQuery, [name, phoneNumber, bed_id], (err, result) => {
+        connection.query(addMemberQuery, [name, phoneNo, bed_id, dateJoining, dateLeaving, workingLocation, adharNumber, costing, alternativeNumber], (err, result) => {
           if (err) {
             console.error('Error inserting member:', err);
             res.status(500).send('Error inserting member');
@@ -1119,7 +1120,6 @@ app.post('/add/members', (req, res) => {
     });
   });
 });
-
 
 app.get('/display/members', (req, res) => {
   const membersQuery = 'SELECT * FROM members WHERE active = 1';
@@ -1304,14 +1304,27 @@ app.get('/api/phone-numbers', (req, res) => {
   });
 });
 app.post('/addMembers', (req, res) => {
-  const { name, phoneNo, bedId } = req.body;
+  const { name, phoneNo, bedId, dateJoining, dateLeaving, workingLocation, adharNumber, costing, alternativeNumber } = req.body;
 
-  connection.query('INSERT INTO members (name, phoneno, bed_id) VALUES (?, ?, ?)', [name, phoneNo, bedId], (err, results) => {
-    if (err) return res.status(500).send(err);
+  const addMemberQuery = `
+    INSERT INTO members (name, phoneno, bed_id, date_join, date_leaving, working_location, adhar, costing, alternative_numbers, active)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+  `;
+  
+  connection.query(addMemberQuery, [name, phoneNo, bedId, dateJoining, dateLeaving, workingLocation, adharNumber, costing, alternativeNumber], (err, results) => {
+    if (err) {
+      console.error('Error inserting member:', err);
+      return res.status(500).send(err);
+    }
 
-    connection.query('UPDATE beds SET available = 1 WHERE id = ?', [bedId], (err, results) => {
-      if (err) return res.status(500).send(err);
-      res.send('Member added and bed updated');
+    // Update the availability of the bed
+    const updateBedQuery = 'UPDATE beds SET available = 1 WHERE id = ?';
+    connection.query(updateBedQuery, [bedId], (err, results) => {
+      if (err) {
+        console.error('Error updating bed availability:', err);
+        return res.status(500).send(err);
+      }
+      res.send('Member added successfully and bed updated');
     });
   });
 });
@@ -1658,6 +1671,101 @@ app.post('/api/insertVacatingMember/:id', (req, res) => {
         res.status(200).json({ success: true });
       });
     }
+  });
+});
+
+app.get('/api/calendar/:year/:month', (req, res) => {
+  const { year, month } = req.params;
+
+  const queryJoining = `
+    SELECT m.name AS member_name, m.date_join
+    FROM members m
+    WHERE MONTH(m.date_join) = ? AND YEAR(m.date_join) = ? AND m.active = 1
+  `;
+
+  const queryLeaving = `
+    SELECT m.name AS member_name, vm.date_vacating
+    FROM vacating_members vm
+    LEFT JOIN members m ON m.member_id = vm.member_id
+    WHERE MONTH(vm.date_vacating) = ? AND YEAR(vm.date_vacating) = ?
+  `;
+
+  connection.getConnection((err, connection) => {
+    if (err) {
+      console.error('Error getting MySQL connection:', err);
+      res.status(500).send('Database error');
+      return;
+    }
+
+    connection.query(queryJoining, [month, year], (errJoining, joiningResults) => {
+      if (errJoining) {
+        console.error('Error executing query for joining members:', errJoining);
+        connection.release();
+        res.status(500).send('Database error');
+        return;
+      }
+
+      connection.query(queryLeaving, [month, year], (errLeaving, leavingResults) => {
+        connection.release();
+
+        if (errLeaving) {
+          console.error('Error executing query for leaving members:', errLeaving);
+          res.status(500).send('Database error');
+          return;
+        }
+
+        res.json({ joining: joiningResults, leaving: leavingResults });
+      });
+    });
+  });
+});
+
+// Add Statement
+app.post('/api/add/statements', (req, res) => {
+  upload(req, res, function (err) {
+      if (err instanceof multer.MulterError) {
+          // A multer error occurred when uploading
+          console.error('Multer error:', err);
+          return res.status(500).json({ error: 'Error uploading file' });
+      } else if (err) {
+          // An unknown error occurred
+          console.error('Unknown error:', err);
+          return res.status(500).json({ error: 'Unknown error occurred' });
+      }
+
+      // File uploaded successfully, now handle other form data
+      const { name, paymentType, transactionId, amount, type } = req.body;
+      let photoPath = null;
+
+      if (req.file) {
+          photoPath = '/uploads/' + req.file.filename;
+      }
+
+      const sql = 'INSERT INTO statements (name, paymentType, transactionId, amount, type, photo) VALUES (?, ?, ?, ?, ?, ?)';
+      connection.query(sql, [name, paymentType, transactionId, amount, type, photoPath], (err, result) => {
+          if (err) {
+              console.error('Error adding statement:', err);
+              if (req.file) {
+                  // If there was an error, delete the uploaded file
+                  fs.unlinkSync(req.file.path);
+              }
+              return res.status(500).json({ error: 'Error adding statement' });
+          }
+          console.log('Statement added:', result);
+          res.status(200).json({ message: 'Statement added successfully' });
+      });
+  });
+});
+
+app.get('/api/statements', (req, res) => {
+  const sql = 'SELECT * FROM statements';
+  connection.query(sql, (err, results) => {
+    if (err) {
+      console.error('Error fetching statements:', err);
+      res.status(500).json({ error: 'Error fetching statements' });
+      return;
+    }
+    res.status(200).json(results);
   });
 });
 
