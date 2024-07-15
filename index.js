@@ -77,7 +77,7 @@ const upload = multer({
 
 
 // Serve static files from the 'public' directory
-app.use("/", express.static(path.join(__dirname, 'public')));
+app.use("/pg/", express.static(path.join(__dirname, 'public')));
 
 const connection = mysql.createPool({
   connectionLimit: 10, // Maximum number of connections in the pool
@@ -97,7 +97,7 @@ connection.getConnection((err) => {
 
 const userStates = {};
 
-app.post('/webhook', (req, res) => {
+app.post('/pg/webhook', (req, res) => {
   console.log('Incoming POST request:', JSON.stringify(req.body, null, 2)); // Log incoming POST request payload
 
   try {
@@ -798,7 +798,7 @@ async function generateTicketPDF(ticketDetails) {
   return await pdfDoc.save();
 }
 
-app.post('/api/send-whatsapp-reminder', async (req, res) => {
+app.post('/pg/api/send-whatsapp-reminder', async (req, res) => {
   const { remniderMember, message } = req.body;
 
   const data = {
@@ -843,7 +843,7 @@ function sendWhatsAppMessage(data) {
 // Webhook verification endpoint (GET request)
 const VERIFY_TOKEN = 'EAAFsUoRPg1QBOzpnPGEpxBDKEw93j35D2V0Qg5C8O58FNQZAxWXWMo0XJZB6ezMoUWY6xNC6AhPGUZCjt0w8AJwuyAfkhjnZAn73tOU88pXhTxAJevtKm1GSGkDFwh5y79N1eX9LWhD3ceZAZBr36MDd1fgAy0mP9UfVDIugUDGxcl64vAhpNuj7FkbG36HGJn3RQus1iw92DiNn4w';
 
-app.get('/webhook', (req, res) => {
+app.get('/pg/webhook', (req, res) => {
     const mode = req.query['hub.mode'];
     const token = req.query['hub.verify_token'];
     const challenge = req.query['hub.challenge'];
@@ -863,12 +863,12 @@ app.get('/webhook', (req, res) => {
 
 
 // GET endpoint for testing
-app.get('/', (req, res) => {
+app.get('/pg/', (req, res) => {
   res.send('Welcome to the Facebook Messenger webhook!');
 });
 
 // Success endpoint to handle successful payments
-app.get('/success', async (req, res) => {
+app.get('/pg/success', async (req, res) => {
   const sessionId = req.query.session_id;
   const senderId = req.query.sender_id;
   if (!sessionId || !senderId) {
@@ -886,7 +886,7 @@ app.get('/success', async (req, res) => {
 
 /*Admin Panel code*/
 
-app.post('/addUser', (req, res) => {
+app.post('/pg/addUser', (req, res) => {
   const {
     phone_no,
     email,
@@ -954,9 +954,9 @@ const verifyjwt = (req, res) => {
   }
 };
 
-app.get("/userAuth", verifyjwt, (req, res) => { });
+app.get("/pg/userAuth", verifyjwt, (req, res) => { });
 
-app.get("/login", (req, res) => {
+app.get("/pg/login", (req, res) => {
   if (req.session.user) {
     res.send({ loggedIn: true, user: req.session.user });
   } else {
@@ -964,7 +964,7 @@ app.get("/login", (req, res) => {
   }
 });
 
-app.post("/login", (req, res) => {
+app.post("/pg/login", (req, res) => {
   const email = req.body.email;
   const password = req.body.password;
 
@@ -1003,7 +1003,7 @@ app.post("/login", (req, res) => {
   );
 });
 
-app.put('/edit/member/:memberId', (req, res) => {
+app.put('/pg/edit/member/:memberId', (req, res) => {
   const memberId = req.params.memberId;
   const { name, phoneNo, bedId } = req.body;
 
@@ -1054,7 +1054,7 @@ app.put('/edit/member/:memberId', (req, res) => {
   });
 });
 
-app.get('/display/members', (req, res) => {
+app.get('/pg/display/members', (req, res) => {
   const membersQuery = 'SELECT * FROM members WHERE active = 1';
 
   connection.query(membersQuery, (err, membersResults) => {
@@ -1181,7 +1181,7 @@ app.get('/display/members', (req, res) => {
 });
 
 
-app.get('/api/vacancies', (req, res) => {
+app.get('/pg/api/vacancies', (req, res) => {
   const vacancies = { '1 sharing': 0, '2 sharing': 0, '3 sharing': 0, '4 sharing': 0 };
 
   // Query to count vacancies for each sharing type
@@ -1209,7 +1209,7 @@ app.get('/api/vacancies', (req, res) => {
   });
 });
 
-app.get('/advance_tickets', (req, res) => {
+app.get('/pg/advance_tickets', (req, res) => {
   const query = 'SELECT * FROM advance_ticket';
 
   connection.query(query, (err, results) => {
@@ -1223,7 +1223,7 @@ app.get('/advance_tickets', (req, res) => {
 });
 
 
-app.get('/api/phone-numbers', (req, res) => {
+app.get('/pg/api/phone-numbers', (req, res) => {
   const query = 'SELECT * FROM phone_numbers';
 
   connection.query(query, (err, results) => {
@@ -1236,7 +1236,7 @@ app.get('/api/phone-numbers', (req, res) => {
     res.json(results);
   });
 });
-app.post('/addMembers', (req, res) => {
+app.post('/pg/addMembers', (req, res) => {
   const { name, phoneNo, bedId, dateJoining, dateLeaving, workingLocation, adharNumber, costing, alternativeNumber } = req.body;
 
   const addMemberQuery = `
@@ -1262,7 +1262,7 @@ app.post('/addMembers', (req, res) => {
   });
 });
 
-app.get('/beds/:sharing', (req, res) => {
+app.get('/pg/beds/:sharing', (req, res) => {
   const sharing = req.params.sharing;
 
   connection.query(`
@@ -1285,7 +1285,7 @@ app.get('/beds/:sharing', (req, res) => {
   });
 });
 
-app.put('/api/updateMember/:id', (req, res) => {
+app.put('/pg/api/updateMember/:id', (req, res) => {
   const memberId = req.params.id;
 
   const sqlUpdateMember = 'UPDATE members SET active = ? WHERE member_id = ?';
@@ -1360,7 +1360,7 @@ cron.schedule('*/30 * * * * *', () => {
 });
 
 // Endpoint to fetch all members
-app.get('/api/members', (req, res) => {
+app.get('/pg/api/members', (req, res) => {
   connection.getConnection((err, connection) => {
       if (err) {
           console.error('Error connecting to database:', err);
@@ -1382,7 +1382,7 @@ app.get('/api/members', (req, res) => {
   });
 });
 
-app.get('/api/total-rent', (req, res) => {
+app.get('/pg/api/total-rent', (req, res) => {
   connection.getConnection((err, connection) => {
     if (err) {
       console.error('Error connecting to database:', err);
@@ -1413,7 +1413,7 @@ app.get('/api/total-rent', (req, res) => {
   });
 });
 // Endpoint to fetch members leaving this month
-app.get('/api/leaving-members', (req, res) => {
+app.get('/pg/api/leaving-members', (req, res) => {
   connection.getConnection((err, connection) => {
       if (err) {
           console.error('Error connecting to database:', err);
@@ -1436,7 +1436,7 @@ app.get('/api/leaving-members', (req, res) => {
 });
 
 // Endpoint to fetch members with rent not paid this month
-app.get('/api/rent-not-paid', (req, res) => {
+app.get('/pg/api/rent-not-paid', (req, res) => {
   connection.getConnection((err, connection) => {
       if (err) {
           console.error('Error connecting to database:', err);
@@ -1459,7 +1459,7 @@ app.get('/api/rent-not-paid', (req, res) => {
 });
 
 // Endpoint to fetch upcoming joining members
-app.get('/api/joining-members', (req, res) => {
+app.get('/pg/api/joining-members', (req, res) => {
   connection.getConnection((err, connection) => {
       if (err) {
           console.error('Error connecting to database:', err);
@@ -1482,7 +1482,7 @@ app.get('/api/joining-members', (req, res) => {
 });
 
 // API Endpoint to update rent payment status
-app.put('/api/mark-rent-paid/:id', (req, res) => {
+app.put('/pg/api/mark-rent-paid/:id', (req, res) => {
   const memberId = req.params.id;
   const { payment_pending } = req.body; // Assuming 'payment_pending' is sent in the request body
 
@@ -1498,7 +1498,7 @@ app.put('/api/mark-rent-paid/:id', (req, res) => {
   });
 });
 
-app.get('/api/members-paid-rent', async (req, res) => {
+app.get('/pg/api/members-paid-rent', async (req, res) => {
   connection.getConnection((err, connection) => {
     if (err) {
         console.error('Error connecting to database:', err);
@@ -1521,7 +1521,7 @@ app.get('/api/members-paid-rent', async (req, res) => {
 });
 
 // API Endpoint to update rent payment status
-app.put('/api/mark-rent-not-paid/:id', (req, res) => {
+app.put('/pg/api/mark-rent-not-paid/:id', (req, res) => {
   const memberId = req.params.id;
   const { payment_pending } = req.body; // Assuming 'payment_pending' is sent in the request body
 
@@ -1538,7 +1538,7 @@ app.put('/api/mark-rent-not-paid/:id', (req, res) => {
 });
 
 
-app.get('/api/vacating-members', (req, res) => {
+app.get('/pg/api/vacating-members', (req, res) => {
   const query = `
     SELECT m.*, vm.date_vacating
     FROM vacating_members vm
@@ -1557,7 +1557,7 @@ app.get('/api/vacating-members', (req, res) => {
 });
 
 
-app.delete('/api/vacating-members/:id', (req, res) => {
+app.delete('/pg/api/vacating-members/:id', (req, res) => {
   const { id } = req.params;
   const query = `
     DELETE FROM vacating_members
@@ -1574,7 +1574,7 @@ app.delete('/api/vacating-members/:id', (req, res) => {
 });
 
 // API route to insert into vacating_members with duplication check
-app.post('/api/insertVacatingMember/:id', (req, res) => {
+app.post('/pg/api/insertVacatingMember/:id', (req, res) => {
   const memberId = req.params.id;
   const { deletionDate } = req.body;
 
@@ -1607,7 +1607,7 @@ app.post('/api/insertVacatingMember/:id', (req, res) => {
   });
 });
 
-app.get('/api/calendar/:year/:month', (req, res) => {
+app.get('/pg/api/calendar/:year/:month', (req, res) => {
   const { year, month } = req.params;
 
   const queryJoining = `
@@ -1654,7 +1654,7 @@ app.get('/api/calendar/:year/:month', (req, res) => {
 });
 
 // Add Statement
-app.post('/api/add/statements', (req, res) => {
+app.post('/pg/api/add/statements', (req, res) => {
   upload(req, res, function (err) {
       if (err instanceof multer.MulterError) {
           // A multer error occurred when uploading
@@ -1690,7 +1690,7 @@ app.post('/api/add/statements', (req, res) => {
   });
 });
 
-app.get('/api/statements', (req, res) => {
+app.get('/pg/api/statements', (req, res) => {
   const sql = 'SELECT * FROM statements';
   connection.query(sql, (err, results) => {
     if (err) {
